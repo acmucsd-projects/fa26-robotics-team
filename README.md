@@ -8,3 +8,13 @@ Samudera Aubreyasta
 Rylex Phan
 
 Anwesha Mazumdar
+
+Zachary Chen
+
+Grace Ho
+
+Arhana Raychaudhuri
+
+Sahar Shaikh
+
+Kathie Li
