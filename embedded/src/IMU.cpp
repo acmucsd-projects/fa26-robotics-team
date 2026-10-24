@@ -1,4 +1,4 @@
-#include "imu.hpp"
+#include "IMU.hpp"
 #include <Wire.h>
 
 constexpr float ACCEL_MS2_PER_LSB = 9.80665f / 8192.0f;
