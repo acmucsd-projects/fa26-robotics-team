@@ -1,0 +1,7 @@
+{
+  "folders": [
+    { "name": "embedded", "path": "embedded" },
+    { "name": "software", "path": "software" }
+  ],
+  "settings": {}
+}
