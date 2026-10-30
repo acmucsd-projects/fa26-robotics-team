@@ -1,3 +1,4 @@
 * text=auto eol=lf
+C:/Users/warna/Documents/GitHub/fa26-robotics-team/software/Arnavrfdetr_1.pth filter=lfs diff=lfs merge=lfs -text
 *.psd filter=lfs diff=lfs merge=lfs -text
 *.pth filter=lfs diff=lfs merge=lfs -text
