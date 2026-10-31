@@ -1,26 +1,30 @@
 #pragma once
 
-#include "DFRobot_BMI160.h"
-#include <Arduino.h>
+#include "Vector.hpp"
+#include <cstdint>
 
-struct ImuReading {
-  float ax, ay, az;
-  float gx, gy, gz;
+struct IMUReading {
+  Vec3<float> accel;
+  Vec3<float> gyro;
+  IMUReading operator+(IMUReading other);
 };
 
-class Imu {
+class IMU {
+  const uint8_t sda;
+  const uint8_t scl;
+
+  const Vec3<float> accelBias;
+  const Vec3<float> accelScale;
+  const Vec3<float> gyroBias;
+
+  const Vec3<float> accelUnitConv;
+  const Vec3<float> gyroUnitConv;
+
 public:
-  Imu(uint8_t sda, uint8_t scl, int8_t addr = BMI160_I2C_ADDR);
-
-  bool begin();
-  void calibrateGyro(int samples = 200);
-  bool read(ImuReading &out);
-
-private:
-  bool writeReg(uint8_t reg, uint8_t value);
-
-  DFRobot_BMI160 bmi160;
-  uint8_t sda, scl;
-  int8_t addr;
-  float gyroBias[3] = {};
+  IMU(uint8_t sda, uint8_t scl, Vec3<float> accelBias = 0, Vec3<float> accelScale = 1,
+      Vec3<float> gyroBias = 0);
+  [[nodiscard]] bool begin() const;
+  bool readTicks(IMUReading &out);
+  bool read(IMUReading &out);
+  [[nodiscard]] static bool writeReg(uint8_t reg, uint8_t value);
 };

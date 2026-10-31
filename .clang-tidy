@@ -17,6 +17,8 @@ Checks: >
   -cppcoreguidelines-pro-bounds-pointer-arithmetic,
   -cppcoreguidelines-special-member-functions,
   modernize-*,
+  -modernize-use-trailing-return-type,
+  -modernize-use-designated-initializers,
   performance-*,
   portability-*,
   -portability-avoid-pragma-once,
@@ -27,7 +29,7 @@ Checks: >
 
 WarningsAsErrors: "*"
 FormatStyle: file
-HeaderFilterRegex: '.*[/\\]src[/\\]'
+HeaderFilterRegex: '.*[/\\]{include}[/\\]'
 HeaderFileExtensions: ["hh"]
 ImplementationFileExtensions: ["cc"]
 CheckOptions:
