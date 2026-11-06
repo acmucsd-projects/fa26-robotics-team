@@ -1,7 +1,7 @@
 #include "IMU.hpp"
+#include <Preferences.h>
 #include <Wire.h>
 
-constexpr float ACCEL_MS2_PER_LSB = 9.80665f / 8192.0f;
 constexpr float GYRO_DPS_PER_LSB = 1.0f / 16.4f;
 
 Imu::Imu(uint8_t sda, uint8_t scl, int8_t addr)
@@ -17,22 +17,47 @@ bool Imu::begin() {
             writeReg(BMI160_GYRO_CONFIG_ADDR,
                      BMI160_GYRO_BW_OSR4_MODE << 4 | BMI160_GYRO_ODR_100HZ);
   delay(100);
+
+  Preferences prefs;
+  prefs.begin("imu", false);
+  prefs.getBytes("offset", accelOffset, sizeof(accelOffset));
+  prefs.getBytes("scale", accelScale, sizeof(accelScale));
+  prefs.end();
   return ok;
 }
 
-void Imu::calibrateGyro(int samples) {
-  long sum[3] = {};
+void Imu::averageRaw(float out[6], int samples) {
+  long sum[6] = {};
   int16_t d[6];
   for (int n = 0; n < samples;) {
     if (bmi160.getAccelGyroData(d) == BMI160_OK) {
-      for (int i = 0; i < 3; i++)
+      for (int i = 0; i < 6; i++)
         sum[i] += d[i];
       n++;
     }
     delay(10);
   }
+  for (int i = 0; i < 6; i++)
+    out[i] = sum[i] / float(samples);
+}
+
+void Imu::calibrateGyro(int samples) {
+  float avg[6];
+  averageRaw(avg, samples);
   for (int i = 0; i < 3; i++)
-    gyroBias[i] = sum[i] / float(samples);
+    gyroBias[i] = avg[i];
+}
+
+void Imu::saveAccelCalibration(float offset[3], float scale[3]) {
+  Preferences prefs;
+  prefs.begin("imu", false);
+  prefs.putBytes("offset", offset, 3 * sizeof(float));
+  prefs.putBytes("scale", scale, 3 * sizeof(float));
+  prefs.end();
+  for (int i = 0; i < 3; i++) {
+    accelOffset[i] = offset[i];
+    accelScale[i] = scale[i];
+  }
 }
 
 bool Imu::read(ImuReading &out) {
@@ -40,9 +65,9 @@ bool Imu::read(ImuReading &out) {
   if (bmi160.getAccelGyroData(d) != BMI160_OK)
     return false;
 
-  out.ax = d[3] * ACCEL_MS2_PER_LSB;
-  out.ay = d[4] * ACCEL_MS2_PER_LSB;
-  out.az = d[5] * ACCEL_MS2_PER_LSB;
+  out.ax = (d[3] - accelOffset[0]) * accelScale[0] * ACCEL_MS2_PER_LSB;
+  out.ay = (d[4] - accelOffset[1]) * accelScale[1] * ACCEL_MS2_PER_LSB;
+  out.az = (d[5] - accelOffset[2]) * accelScale[2] * ACCEL_MS2_PER_LSB;
   out.gx = (d[0] - gyroBias[0]) * GYRO_DPS_PER_LSB;
   out.gy = (d[1] - gyroBias[1]) * GYRO_DPS_PER_LSB;
   out.gz = (d[2] - gyroBias[2]) * GYRO_DPS_PER_LSB;

@@ -1,7 +1,9 @@
+#include "complimentary_filter.hpp"
 #include "imu.hpp"
 #include <Arduino.h>
 
 Imu imu(8, 9);
+ComplementaryFilter filter;
 
 void setup() {
   Serial.begin(115200);
@@ -28,9 +30,14 @@ void loop() {
     return;
   }
 
+  static uint32_t last = micros();
+  uint32_t now = micros();
+  filter.update(r.ax, r.ay, r.az, r.gy, r.gz, (now - last) / 1e6f);
+  last = now;
+
   Serial.printf("accel (m/s^2): %7.2f %7.2f %7.2f  |a| %6.2f   gyro (deg/s): "
-                "%8.2f %8.2f %8.2f\n",
+                "%8.2f %8.2f %8.2f   tilt %7.2f  pan %7.2f\n",
                 r.ax, r.ay, r.az, sqrtf(r.ax * r.ax + r.ay * r.ay + r.az * r.az),
-                r.gx, r.gy, r.gz);
-  delay(100);
+                r.gx, r.gy, r.gz, filter.tilt, filter.pan);
+  delay(10);
 }
