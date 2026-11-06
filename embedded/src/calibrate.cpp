@@ -41,8 +41,10 @@ void setup() {
   const char *prompts[3][2] = {
       {"hold it +X up, keep it there , press enter when up",
        "place it -X now dude, press enter when up"},
-      {"place it +Y now dude, press enter when up", "place it -Y now dude, press enter when up"},
-      {"place it +Z now dude, press enter when up", "place it -Z now dude, press enter when up"},
+      {"place it +Y now dude, press enter when up",
+       "place it -Y now dude, press enter when up"},
+      {"place it +Z now dude, press enter when up",
+       "place it -Z now dude, press enter when up"},
   };
 
   float offset[3], scale[3];

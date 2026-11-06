@@ -3,6 +3,7 @@
 #include "DFRobot_BMI160.h"
 #include <Arduino.h>
 
+/* this makes the readings readable*/
 constexpr float ACCEL_LSB_PER_G = 8192.0f;
 constexpr float ACCEL_MS2_PER_LSB = 9.80665f / ACCEL_LSB_PER_G;
 
