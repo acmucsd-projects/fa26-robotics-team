@@ -2,13 +2,13 @@ import os
 from rfdetr import RFDETR
 
 def main():
-    MODEL_PATH = os.path.abspath("checkpoint_best_total.pth")
+    MODEL_PATH = os.path.abspath("checkpoint_best_total_v2.pth")
 
     model = RFDETR.from_checkpoint(MODEL_PATH)
 
 
     metrics = model.evaluate(
-        dataset_dir="C:\\Users\\jeffe\\Downloads\\robo\\Autonomous Gimbal Project.v2-1000-image-dataset.yolov8", 
+        dataset_dir="C:\\Users\\jeffe\\Downloads\\robo\\Autonomous Gimbal Project.v3-1000-with-nulls.yolov8", 
         split="test" 
     )
 
