@@ -3,7 +3,7 @@ import cv2
 import os
 from rfdetr import RFDETR
 
-MODEL_PATH = os.path.abspath("checkpoint_best_total.pth")
+MODEL_PATH = os.path.abspath("checkpoint_best_total_v6.pth")
 
 # Load checkpoint using absolute path
 model = RFDETR.from_checkpoint(MODEL_PATH)
@@ -15,7 +15,7 @@ while cap.isOpened():
         break
 
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-    detections = model.predict(frame_rgb, threshold=0.75)
+    detections = model.predict(frame_rgb, threshold=0.25)
 
     # Extract coordinates, confidence, and class IDs
     for xyxy, conf, class_id in zip(
