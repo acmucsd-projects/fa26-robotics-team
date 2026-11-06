@@ -18,7 +18,7 @@ while cap.isOpened():
             break
 
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        detections = model.predict(frame_rgb, threshold=0.6)
+        detections = model.predict(frame_rgb, threshold=0.2)
 
         # Extract coordinates, confidence, and class IDs
         for xyxy, conf, class_id in zip(

@@ -21,7 +21,7 @@ def threadTarget(global_state: Global):
         except queue.Empty:
             continue
 
-        detections = model.predict(frame, threshold=0.6)
+        detections = model.predict(frame, threshold=0.2)
         
         # Extract coordinates, confidence, and class IDs
         for xyxy, conf, class_id in zip(
