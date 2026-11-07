@@ -7,6 +7,9 @@
 /* so 32768 / 2000 = 16.4 counts = 1 deg/s */
 /* begin() never sets the gyro range, +-2000 is the dfrobot library default */
 /* change the range and this number has to change too */
+/* note: 2000 is the max spin it can measure, not how fast it moves */
+/* gimbal is way slower, +-500 (65.6) would give finer steps if tilt gets
+ * jittery */
 constexpr float GYRO_DPS_PER_LSB = 1.0f / 16.4f;
 
 /* saves pins and addresses */
