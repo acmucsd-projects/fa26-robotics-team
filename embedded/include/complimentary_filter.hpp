@@ -3,7 +3,7 @@
 
 /* mixes gyro with accel */
 struct ComplementaryFilter {
-  /* how much to trust the gyro each step, 0.98 = 98% gyro 2% accel */
+  /* 0.98 = 98% gyro 2% accel */
   /* higher = smoother but slower to fix drift, at ~100hz 0.98 fixes drift in
    * about 0.5s */
   float alpha = 0.98f;
