@@ -1,43 +1,21 @@
-#include "complimentary_filter.hpp"
-#include "imu.hpp"
-#include <Arduino.h>
+#include "IMU.hpp"
+#include <BMI160Gen.h>
+#include <Wire.h>
 
-Imu imu(8, 9);
-ComplementaryFilter filter;
-
+IMU imu{6, 7};
 void setup() {
-  Serial.begin(115200);
-  while (!Serial && millis() < 2000) {
-    delay(10);
-  }
-
   if (!imu.begin()) {
-    Serial.println("BMI160 init failed");
-    while (true) {
-      delay(1000);
-    }
-  }
-  Serial.println("Calibrating gyro, keep the sensor still...");
-  imu.calibrateGyro();
-  Serial.println("BMI160 ready");
+    return;
+  };
+  Serial.println("BMI160 initialized successfully!");
 }
 
 void loop() {
-  ImuReading r;
+  IMUReading r{};
   if (!imu.read(r)) {
-    Serial.println("read failed");
-    delay(100);
     return;
   }
-
-  static uint32_t last = micros();
-  uint32_t now = micros();
-  filter.update(r.ax, r.ay, r.az, r.gy, r.gz, (now - last) / 1e6f);
-  last = now;
-
-  Serial.printf("accel (m/s^2): %7.2f %7.2f %7.2f  |a| %6.2f   gyro (deg/s): "
-                "%8.2f %8.2f %8.2f   tilt %7.2f  pan %7.2f\n",
-                r.ax, r.ay, r.az, sqrtf(r.ax * r.ax + r.ay * r.ay + r.az * r.az),
-                r.gx, r.gy, r.gz, filter.tilt, filter.pan);
-  delay(10);
+  Serial.printf("ACC: %6f %6f %6f | GYR: %6f %6f %6f\n", r.accel.x, r.accel.y, r.accel.z, r.gyro.x,
+                r.gyro.y, r.gyro.z);
+  delay(100);
 }

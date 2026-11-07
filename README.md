@@ -6,7 +6,7 @@ Arnav Wagh
 
 Samudera Aubreyasta
 
-Rylex Phan
+Gia (Rylex) Phan
 
 Anwesha Mazumdar
 
