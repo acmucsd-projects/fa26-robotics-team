@@ -1,10 +1,6 @@
 #include "IMU.hpp"
 #include <Wire.h>
 
-/* gyro range is +-2000 dps (dfrobot default), so 32768 / 2000 = 16.4 raw = 1
- * deg/s */
-constexpr float GYRO_DPS_PER_LSB = 1.0f / 16.4f;
-
 /* calibration now comes in here instead of being loaded from flash */
 Imu::Imu(uint8_t sda, uint8_t scl, int8_t addr, Vec3<float> accelOffset,
          Vec3<float> accelScale)
@@ -26,12 +22,16 @@ bool Imu::begin() {
             writeReg(BMI160_ACCEL_RANGE_ADDR, BMI160_ACCEL_RANGE_4G) &&
             writeReg(BMI160_GYRO_CONFIG_ADDR,
                      BMI160_GYRO_BW_OSR4_MODE << 4 | BMI160_GYRO_ODR_100HZ);
+  /* gyro range is left at the default +-2000 dps. to change it, uncomment the
+   * line below, swap 2000 for 1000, 500, 250 or 125, and change 16.4f in
+   * read() to 32.8f, 65.6f, 131.2f or 262.4f to match */
+  /* ok = ok && writeReg(BMI160_GYRO_RANGE_ADDR, BMI160_GYRO_RANGE_2000_DPS); */
   /* give the chip time to settle */
   delay(100);
   return ok;
 }
 
-void Imu::averageRaw(float out[6], int samples) {
+void Imu::averageRaw(Vec3<float> &gyro, Vec3<float> &accel, int samples) {
   /* long because hundreds of 16bit readings added up overflow an int16 */
   long sum[6] = {};
   int16_t d[6];
@@ -46,16 +46,13 @@ void Imu::averageRaw(float out[6], int samples) {
     /* 10ms = one new reading at 100hz */
     delay(10);
   }
-  for (int i = 0; i < 6; i++)
-    out[i] = sum[i] / float(samples);
+  gyro = Vec3<float>(sum[0], sum[1], sum[2]) / float(samples);
+  accel = Vec3<float>(sum[3], sum[4], sum[5]) / float(samples);
 }
 
 void Imu::calibrateGyro(int samples) {
-  float avg[6];
-  averageRaw(avg, samples);
-  /* gyro is the first 3, a still gyro should read 0 so whatever it reads is
-   * bias */
-  gyroBias = Vec3<float>(avg[0], avg[1], avg[2]);
+  Vec3<float> accel;
+  averageRaw(gyroBias, accel, samples);
 }
 
 bool Imu::read(ImuReading &out) {
@@ -67,9 +64,9 @@ bool Imu::read(ImuReading &out) {
   Vec3<float> rawAccel(d[3], d[4], d[5]);
   Vec3<float> rawGyro(d[0], d[1], d[2]);
   /* accel: remove offset, fix sensitivity with scale, then raw to m/s^2 */
-  out.accel = (rawAccel - accelOffset) * accelScale * ACCEL_MS2_PER_LSB;
+  out.accel = (rawAccel - accelOffset) * accelScale * (9.80665f / ACCEL_LSB_PER_G);
   /* gyro: remove bias, then raw to deg/s */
-  out.gyro = (rawGyro - gyroBias) * GYRO_DPS_PER_LSB;
+  out.gyro = (rawGyro - gyroBias) / 16.4f;
   return true;
 }
 

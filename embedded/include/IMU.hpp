@@ -11,8 +11,6 @@
 /* IMU is set to +-4g, so 32768 / 4 = 8192 */
 /* this is so that raw value / 8192 equals to 1g */
 constexpr float ACCEL_LSB_PER_G = 8192.0f;
-/* 1g = 9.80665 m/s^2, so dividing by 8192 gives m/s^2 per raw */
-constexpr float ACCEL_MS2_PER_LSB = 9.80665f / ACCEL_LSB_PER_G;
 
 /* accel = x y z in m/s^2, gyro = x y z in deg/s */
 /* switched from 6 floats to Vec3 so main.cpp can use r.accel.x */
@@ -33,9 +31,8 @@ public:
   bool begin();
   /* board has to sit still, averages the gyro and saves it as the bias */
   void calibrateGyro(int samples = 200);
-  /* averages raw readings, out order is gyro x y z then accel x y z */
   /* used by calibrateGyro and the calibrate firmware */
-  void averageRaw(float out[6], int samples);
+  void averageRaw(Vec3<float> &gyro, Vec3<float> &accel, int samples);
   bool read(ImuReading &out);
 
 private:

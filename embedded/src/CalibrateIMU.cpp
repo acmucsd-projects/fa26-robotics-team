@@ -6,34 +6,25 @@
 #include "IMU.hpp"
 #include <Arduino.h>
 
-/* ~4s of readings per pose */
-constexpr int SAMPLES_PER_POSE = 420;
-
 Imu imu(6, 7);
 
-/* clears old input, repeats the prompt every 5s until enter is pressed */
 void waitForEnter(const char *prompt) {
   while (Serial.available())
     Serial.read();
   while (!Serial.available()) {
     Serial.println(prompt);
-    for (int i = 0; i < 500 && !Serial.available(); i++)
-      delay(10);
+    delay(2000);
   }
-  delay(50);
-  while (Serial.available())
-    Serial.read();
 }
 
 /* waits for enter, then returns the averaged raw accel on that axis */
-/* avg is gyro 0-2 then accel 3-5, so accel x is avg[3] */
 float measure(int axis, const char *prompt) {
   waitForEnter(prompt);
   Serial.println("   collecting samples bro... be patient");
-  float avg[6];
-  imu.averageRaw(avg, SAMPLES_PER_POSE);
+  Vec3<float> gyro, accel;
+  imu.averageRaw(gyro, accel, 420);
   Serial.println("  its done brochacho");
-  return avg[3 + axis];
+  return axis == 0 ? accel.x : axis == 1 ? accel.y : accel.z;
 }
 
 void setup() {
@@ -47,15 +38,14 @@ void setup() {
 
   const char *prompts[3][2] = {
       {"hold it +X up, keep it there , press enter when up",
-       "place it -X now dude, press enter when up"},
+       "flip it so X points down dude, press enter when down"},
       {"place it +Y now dude, press enter when up",
-       "place it -Y now dude, press enter when up"},
+       "flip it so Y points down dude, press enter when down"},
       {"place it +Z now dude, press enter when up",
-       "place it -Z now dude, press enter when up"},
+       "flip it so Z points down dude, press enter when down"},
   };
 
   /* pointing up reads +1g, pointing down reads -1g */
-  /* this is because we already did unit converstion in IMU.hpp*/
   /* offset = 0g */
   /* scale = fixes the size, 8192 / the counts per g it actually measure */
   float offset[3], scale[3];
