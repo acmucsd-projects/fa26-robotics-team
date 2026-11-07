@@ -1,6 +1,8 @@
 #include "IMU.hpp"
+#include "BMI160.h"
 #include "Vector.hpp"
-#include <Wire.h>
+#include <BMI160Gen.h>
+#include <Wire.h>`
 #include <cstdint>
 
 IMU::IMU(uint8_t sda_, uint8_t scl_, Vec3<float> accelBias_, Vec3<float> accelScale_,
@@ -9,23 +11,18 @@ IMU::IMU(uint8_t sda_, uint8_t scl_, Vec3<float> accelBias_, Vec3<float> accelSc
       accelUnitConv{9.80665F / 8192.0F}, gyroUnitConv{} {}
 
 bool IMU::begin() const {
+  Serial.begin(115200);
+  while (!Serial) {
+  }
   Wire.begin(sda, scl);
-  return true;
+  Wire.setClock(100000);
+  return BMI160.begin(BMI160GenClass::I2C_MODE, 0x68);
 }
 
 bool IMU::readTicks(IMUReading &out) {
-  std::array<int16_t, 6> data{};
-
-  Vec3<float> rawAccel{
-      static_cast<float>(data[0]),
-      static_cast<float>(data[1]),
-      static_cast<float>(data[2]),
-  };
-  Vec3<float> rawGyro{
-      static_cast<float>(data[3]),
-      static_cast<float>(data[4]),
-      static_cast<float>(data[5]),
-  };
+  Vec3<int> rawAccel{};
+  Vec3<int> rawGyro{};
+  BMI160.readMotionSensor(rawAccel.x, rawAccel.y, rawAccel.z, rawGyro.x, rawGyro.y, rawGyro.z);
 
   out.accel = (rawAccel - accelBias) * accelScale;
   out.gyro = rawGyro - gyroBias;
@@ -37,11 +34,4 @@ bool IMU::read(IMUReading &out) {
   out.accel *= accelUnitConv;
   out.gyro *= gyroUnitConv;
   return res;
-}
-
-bool IMU::writeReg(uint8_t reg, uint8_t value) {
-  Wire.beginTransmission(BMI160_I2C_ADDR);
-  Wire.write(reg);
-  Wire.write(value);
-  return Wire.endTransmission() == 0;
 }

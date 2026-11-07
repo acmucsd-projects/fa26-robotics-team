@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Vector.hpp"
+#include <BMI160Gen.h>
 #include <cstdint>
 
 struct IMUReading {
@@ -21,10 +22,9 @@ class IMU {
   const Vec3<float> gyroUnitConv;
 
 public:
-  IMU(uint8_t sda, uint8_t scl, Vec3<float> accelBias = 0, Vec3<float> accelScale = 1,
-      Vec3<float> gyroBias = 0);
+  IMU(uint8_t sda_, uint8_t scl_, Vec3<float> accelBias_ = 0, Vec3<float> accelScale_ = 1,
+      Vec3<float> gyroBias_ = 0);
   [[nodiscard]] bool begin() const;
-  bool readTicks(IMUReading &out);
-  bool read(IMUReading &out);
-  [[nodiscard]] static bool writeReg(uint8_t reg, uint8_t value);
+  [[nodiscard]] bool readTicks(IMUReading &out);
+  [[nodiscard]] bool read(IMUReading &out);
 };
