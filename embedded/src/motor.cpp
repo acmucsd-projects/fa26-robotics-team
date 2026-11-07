@@ -11,11 +11,13 @@ SMS_STS st;
 void setup() {
 Serial.begin(115200);
 
+const int SERVO_ID = 2;
+const int SERVO_CENTER = 390;
+
 Serial1.begin(1000000, SERIAL_8N1, SERVO_RX, SERVO_TX);
 st.pSerial = &Serial1;
-  MovePos(SERVO_ID, SERVO_CENTER);
-  delay(500);
-  lastTime = millis();
+st.WritePosEx(SERVO_ID, SERVO_CENTER, 2000, 50);
+delay(500);
 delay(1500);
 Serial.println("Scanning bus");
 
@@ -28,17 +30,14 @@ for(int id = 1; id <= 20; id++) {
 }
 
 void loop() {
-  int id = 1;
-  while (id <= 2) {                  // servos 1 and 2 -> first position
-    st.WritePosEx(id, 2048, 2000, 50);
-    id++;
-  }
-  delay(1000);                       // give them time to get there
+	const int SERVO_ID = 2;
+	const int SERVO_CENTER = 390;
+	Serial.println(st.ReadPos(2));
+	
+	st.WritePosEx(SERVO_ID, 2411, 2000, 50);
+	delay(2000);
+	Serial.println(st.ReadPos(2));
 
-  id = 1;
-  while (id <= 2) {                  // servos 1 and 2 -> second position
-    st.WritePosEx(id, 3000, 2000, 50);
-    id++;
-  }
-  delay(1000);
+	st.WritePosEx(SERVO_ID, 380, 2000, 50);
+	delay(2000);
 }
