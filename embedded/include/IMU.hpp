@@ -1,31 +1,53 @@
 #pragma once
 
-#include "Vector.hpp"
-#include <BMI160Gen.h>
-#include <cstdint>
+/* wrapper for the BMI160 IMU (accel + gyro) over I2C */
+/* usage: Imu imu(sda, scl); imu.begin(); imu.calibrateGyro(); imu.read(r); */
 
-struct IMUReading {
+#include "DFRobot_BMI160.h" /* reverts to DFRobot */
+#include "Vector.hpp"       /* Vec3 from the IMU branch, holds x y z together */
+#include <Arduino.h>
+
+/* a 16bit raw values ranges -32768 to +32767 */
+/* IMU is set to +-4g, so 32768 / 4 = 8192 */
+/* this is so that raw value / 8192 equals to 1g */
+constexpr float ACCEL_LSB_PER_G = 8192.0f;
+/* 1g = 9.80665 m/s^2, so dividing by 8192 gives m/s^2 per raw */
+constexpr float ACCEL_MS2_PER_LSB = 9.80665f / ACCEL_LSB_PER_G;
+
+/* accel = x y z in m/s^2, gyro = x y z in deg/s */
+/* switched from 6 floats to Vec3 so main.cpp can use r.accel.x */
+struct ImuReading {
   Vec3<float> accel;
   Vec3<float> gyro;
-  IMUReading operator+(IMUReading other);
 };
 
-class IMU {
-  const uint8_t sda;
-  const uint8_t scl;
-
-  Vec3<float> accelBias;
-  Vec3<float> accelScale;
-  Vec3<float> gyroBias;
-
-  const Vec3<float> accelUnitConv;
-  const Vec3<float> gyroUnitConv;
-
+class Imu {
 public:
-  IMU(uint8_t sda_, uint8_t scl_, Vec3<float> accelBias_ = 0,
-      Vec3<float> accelScale_ = 1, Vec3<float> gyroBias_ = 0);
-  [[nodiscard]] bool begin();
+  /* addr is 0x69 on our board, 0x68 if the SDO pin is pulled low */
+  /* accelOffset (raw counts) and accelScale come from the calibrate firmware */
+  /* (pio run -e calibrate), it prints a line to paste into main.cpp */
+  Imu(uint8_t sda, uint8_t scl, int8_t addr = 0x69, Vec3<float> accelOffset = 0,
+      Vec3<float> accelScale = 1);
+
+  /* starts I2C on our pins, sets accel to +-4g 100hz and gyro to 100hz */
+  bool begin();
+  /* board has to sit still, averages the gyro and saves it as the bias */
   void calibrateGyro(int samples = 200);
-  [[nodiscard]] bool readTicks(IMUReading &out);
-  [[nodiscard]] bool read(IMUReading &out);
+  /* averages raw readings, out order is gyro x y z then accel x y z */
+  /* used by calibrateGyro and the calibrate firmware */
+  void averageRaw(float out[6], int samples);
+  bool read(ImuReading &out);
+
+private:
+  /* the library has no setter for range and rate, so we write registers
+   * ourselves */
+  bool writeReg(uint8_t reg, uint8_t value);
+
+  DFRobot_BMI160 bmi160;
+  uint8_t sda, scl;
+  int8_t addr;
+  /* all three are in raw counts, not real units */
+  Vec3<float> gyroBias = 0;
+  Vec3<float> accelOffset;
+  Vec3<float> accelScale;
 };
