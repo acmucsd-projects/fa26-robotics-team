@@ -4,6 +4,8 @@
 #include <BMI160Gen.h>
 #include <Wire.h>
 
+int BMI160Class::serial_buffer_transfer(uint8_t *, unsigned, unsigned) { return 0; }
+
 IMU::IMU(uint8_t sda_, uint8_t scl_, Vec3<float> accelBias_,
          Vec3<float> accelScale_, Vec3<float> gyroBias_)
     : sda{sda_}, scl{scl_}, accelBias{accelBias_}, accelScale{accelScale_},
