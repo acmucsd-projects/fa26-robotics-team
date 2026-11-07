@@ -10,7 +10,7 @@ MODEL_PATH = os.path.abspath("software/Arnavrfdetr_2.pth")
 # Load checkpoint using absolute path
 model = RFDETR.from_checkpoint(MODEL_PATH)
 
-def threadTarget(global_state: Global):
+def threadTarget(global_state):
     """
     This function is the target for the thread. It processes input data in a separate thread.
     """

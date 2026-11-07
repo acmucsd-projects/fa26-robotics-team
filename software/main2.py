@@ -7,7 +7,38 @@ from input_process import start_input_thread
 from processing import start_process_thread
 from output_process import start_output_thread
 
+class Main():
+    def __init__(self):
+        self.global_state = Global()
+        self.global_state.running = True
+        self.process_thread = start_process_thread(self.global_state)
+        self.output_thread = start_output_thread(self.global_state)
+        self.input_thread = start_input_thread(self.global_state)
 
+    def run(self):
+        try:
+            while (
+                self.input_thread.is_alive()
+                or self.process_thread.is_alive()
+                or not self.global_state.output_queue.empty()
+            ):
+                try:
+                    _, frame_rgb = self.global_state.output_queue.get(timeout=0.01)
+                    frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
+                    cv2.imshow("RF-DETR Live Feed", frame_bgr)
+                except queue.Empty:
+                    pass
+
+                if cv2.waitKey(1) & 0xFF == ord("q"):
+                    self.global_state.running = False
+        finally:
+            self.global_state.running = False
+            self.input_thread.join()
+            self.process_thread.join()
+            self.output_thread.join()
+            cv2.destroyAllWindows()
+        print(f"Output queue size: {self.global_state.data_queue.qsize()}")
+        
 def main():
     global_state = Global()
     global_state.running = True

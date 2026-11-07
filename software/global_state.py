@@ -16,4 +16,6 @@ class Global:
         self.input_queue = queue.Queue(maxsize=1)
         self.output_queue = queue.Queue(maxsize=1)
         self.data_queue = queue.Queue(maxsize=1)
+        self.center_point = None
+        self.hand_position = None
         self.running = False

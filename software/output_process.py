@@ -5,7 +5,7 @@ import os
 from global_state import Global, put_latest
 
 
-def threadTarget(global_state: Global):
+def threadTarget(global_state):
     """
     This function is the target for the thread. It processes input data in a separate thread.
     """
