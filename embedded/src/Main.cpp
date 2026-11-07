@@ -12,10 +12,10 @@ void setup() {
 
 void loop() {
   IMUReading r{};
-  if (!imu.readTicks(r)) {
+  if (!imu.read(r)) {
     return;
   }
-  Serial.printf("ACC: %6d %6d %6d | GYR: %6d %6d %6d\n", r.accel.x, r.accel.y, r.accel.z, r.gyro.x,
+  Serial.printf("ACC: %6f %6f %6f | GYR: %6f %6f %6f\n", r.accel.x, r.accel.y, r.accel.z, r.gyro.x,
                 r.gyro.y, r.gyro.z);
   delay(100);
 }

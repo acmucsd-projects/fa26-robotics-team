@@ -1,3 +1,4 @@
+/*
 #include "IMU.hpp"
 #include <Arduino.h>
 
@@ -28,3 +29,4 @@ void loop() {
   // Accel calibration
   std::array<const char *, 6> axes{"+x", "-x", "+y", "-y", "+z", "-z"};
 }
+*/
