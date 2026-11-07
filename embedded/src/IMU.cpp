@@ -10,17 +10,33 @@ IMU::IMU(uint8_t sda_, uint8_t scl_, Vec3<float> accelBias_,
          Vec3<float> accelScale_, Vec3<float> gyroBias_)
     : sda{sda_}, scl{scl_}, accelBias{accelBias_}, accelScale{accelScale_},
       gyroBias{gyroBias_}, accelUnitConv{9.80665F / 8192.0F},
-      gyroUnitConv{1.0F / 131.072F} {}
+      gyroUnitConv{1.0F / 16.4F} {}
 
-bool IMU::begin() const {
-  Serial.begin(115200);
-  while (!Serial) {
-  }
+bool IMU::begin() {
   Wire.begin(sda, scl);
   Wire.setClock(100000);
-  BMI160.setFullScaleGyroRange(BMI160_GYRO_RANGE_250);
+  if (!BMI160.begin(BMI160GenClass::I2C_MODE, 0x69)) {
+    return false;
+  }
+  BMI160.setFullScaleGyroRange(BMI160_GYRO_RANGE_2000);
   BMI160.setFullScaleAccelRange(BMI160_ACCEL_RANGE_4G);
-  return BMI160.begin(BMI160GenClass::I2C_MODE, 0x68);
+  BMI160.setGyroRate(100);
+  BMI160.setAccelerometerRate(100);
+  BMI160.setGyroDLPFMode(BMI160_DLPF_MODE_OSR4);
+  BMI160.setAccelDLPFMode(BMI160_DLPF_MODE_OSR4);
+  delay(100);
+  return true;
+}
+
+void IMU::calibrateGyro(int samples) {
+  Vec3<float> sum{0};
+  for (int i = 0; i < samples; i++) {
+    int ax, ay, az, gx, gy, gz;
+    BMI160.readMotionSensor(ax, ay, az, gx, gy, gz);
+    sum += Vec3<float>{float(gx), float(gy), float(gz)};
+    delay(10);
+  }
+  gyroBias = sum / float(samples);
 }
 
 bool IMU::readTicks(IMUReading &out) {
