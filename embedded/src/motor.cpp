@@ -13,6 +13,9 @@ Serial.begin(115200);
 
 Serial1.begin(1000000, SERIAL_8N1, SERVO_RX, SERVO_TX);
 st.pSerial = &Serial1;
+  MovePos(SERVO_ID, SERVO_CENTER);
+  delay(500);
+  lastTime = millis();
 delay(1500);
 Serial.println("Scanning bus");
 
