@@ -23,7 +23,7 @@ def threadTarget(global_state):
 
         detections = model.predict(frame, threshold=0.2)
 
-        boxes = []
+        # boxes = []
         
         # Extract coordinates, confidence, and class IDs
         for xyxy, conf, class_id in zip(
@@ -32,25 +32,51 @@ def threadTarget(global_state):
             x1, y1, x2, y2 = map(int, xyxy)
             label = f"Class {class_id}: {conf:.2f}"
 
-            boxes.append((
-                    x1, y1, x2, y2,
-                    float(conf),
-                    int(class_id)
-                ))
+            # Calculate center
+            center_x = round((x1 + x2) / 2)
+            center_y = round((y1 + y2) / 2)
+
+            center_point = (center_x, center_y)
+
+            # boxes.append((
+            #         x1, y1, x2, y2,
+            #         float(conf),
+            #         int(class_id)
+            # ))
 
             # Draw box and label
-            # cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            # cv2.putText(
-            #     frame,
-            #     label,
-            #     (x1, max(y1 - 10, 15)),
-            #     cv2.FONT_HERSHEY_SIMPLEX,
-            #     0.5,
-            #     (0, 255, 0),
-            #     2,
-            # )
+            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            cv2.putText(
+                frame,
+                label,
+                (x1, max(y1 - 10, 15)),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 255, 0),
+                2,
+            )
 
-        global_state.output_stack.put((frame_number, boxes))
+            # Center point
+            cv2.circle(
+                frame,
+                center_point,
+                5,
+                (255, 0, 0),
+                -1
+            )
+
+            # Center coordinates
+            cv2.putText(
+                frame,
+                f"({center_x}, {center_y})",
+                (center_x + 10, center_y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (0, 0, 255),
+                2
+            )
+
+        global_state.output_stack.put((frame_number, frame))
         global_state.data_stack.put((frame_number, detections))
 
 

@@ -170,16 +170,14 @@ def threadTarget(global_state: Global):
     try:
         # Phase 2: Stream frames to RF-DETR
         while cap.isOpened() and global_state.running:
+            ret, frame = cap.read()
+
+            if not ret:
+                break
+
+            # global_state.preview_stack.put((frame_number, frame.copy()))
+
             if frame_number % 3 == 0:
-
-                ret, frame = cap.read()
-
-                if not ret:
-                    break
-
-                global_state.preview_stack.put((frame_number, frame_rgb.copy()))
-
-
                 frame_rgb = cv2.cvtColor(
                     frame,
                     cv2.COLOR_BGR2RGB
