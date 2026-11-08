@@ -16,6 +16,10 @@ class Main():
         self.input_thread = start_input_thread(self.global_state)
 
     def run(self):
+        latest_boxes = []
+        latest_detection_frame = -1
+        last_preview_frame = -1
+
         try:
             while (
                 self.input_thread.is_alive()
@@ -40,6 +44,9 @@ class Main():
         print(f"Output queue size: {self.global_state.data_queue.qsize()}")
         
 def main():
+    latest_boxes = []
+    latest_detection_frame = -1
+    last_preview_frame = -1
     global_state = Global()
     global_state.running = True
     process_thread = start_process_thread(global_state)
@@ -47,20 +54,71 @@ def main():
     input_thread = start_input_thread(global_state)
 
     try:
-        while (
-            input_thread.is_alive()
-            or process_thread.is_alive()
-            or not global_state.output_queue.empty()
-        ):
+        while global_state.running:
+
+            # Get newest detections without blocking
             try:
-                _, frame_rgb = global_state.output_queue.get(timeout=0.01)
-                frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-                cv2.imshow("RF-DETR Live Feed", frame_bgr)
+                while True:
+                    frame_num, boxes = (
+                        global_state.output_stack.get_nowait()
+                    )
+
+                    if frame_num > latest_detection_frame:
+                        latest_boxes = boxes
+                        latest_detection_frame = frame_num
+
+                    global_state.output_stack.task_done()
+
+            except queue.Empty:
+                pass
+
+            # Get newest camera frame
+            try:
+                frame_number, frame = (
+                    global_state.preview_stack.get(timeout=0.01)
+                )
+                
+                frame_rgb = cv2.cvtColor(
+                    frame,
+                    cv2.COLOR_BGR2RGB
+                )
+
+                global_state.preview_stack.task_done()
+
+                # Don't redraw the same camera frame repeatedly
+                if frame_number != last_preview_frame:
+                    last_preview_frame = frame_number
+
+                    # Overlay latest RF-DETR boxes
+                    for box in latest_boxes:
+                        x1, y1, x2, y2, conf, class_id = box
+
+                        cv2.rectangle(
+                            frame_rgb,
+                            (x1, y1),
+                            (x2, y2),
+                            (0, 255, 0),
+                            2
+                        )
+
+                        cv2.putText(
+                            frame_rgb,
+                            f"Class {class_id}: {conf:.2f}",
+                            (x1, max(y1 - 10, 15)),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.5,
+                            (0, 255, 0),
+                            2
+                        )
+
+                    cv2.imshow("RF-DETR Live Feed", frame_rgb)
+
             except queue.Empty:
                 pass
 
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 global_state.running = False
+
     finally:
         global_state.running = False
         input_thread.join()

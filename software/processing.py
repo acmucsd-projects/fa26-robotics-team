@@ -3,7 +3,7 @@ import cv2
 import threading
 import os
 from rfdetr import RFDETR
-from global_state import Global, put_latest
+from global_state import Global
 
 MODEL_PATH = os.path.abspath("software/Arnavrfdetr_2.pth")
 
@@ -15,13 +15,15 @@ def threadTarget(global_state):
     This function is the target for the thread. It processes input data in a separate thread.
     """
 
-    while global_state.running or not global_state.input_queue.empty():
+    while global_state.running or not global_state.input_stack.empty():
         try:
-            frame_number, frame = global_state.input_queue.get(timeout=0.1)
+            frame_number, frame = global_state.input_stack.get(timeout=0.1)
         except queue.Empty:
             continue
 
         detections = model.predict(frame, threshold=0.2)
+
+        boxes = []
         
         # Extract coordinates, confidence, and class IDs
         for xyxy, conf, class_id in zip(
@@ -30,20 +32,26 @@ def threadTarget(global_state):
             x1, y1, x2, y2 = map(int, xyxy)
             label = f"Class {class_id}: {conf:.2f}"
 
-            # Draw box and label
-            cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-            cv2.putText(
-                frame,
-                label,
-                (x1, max(y1 - 10, 15)),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (0, 255, 0),
-                2,
-            )
+            boxes.append((
+                    x1, y1, x2, y2,
+                    float(conf),
+                    int(class_id)
+                ))
 
-        put_latest(global_state.output_queue, (frame_number, frame))
-        put_latest(global_state.data_queue, (frame_number, detections))
+            # Draw box and label
+            # cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            # cv2.putText(
+            #     frame,
+            #     label,
+            #     (x1, max(y1 - 10, 15)),
+            #     cv2.FONT_HERSHEY_SIMPLEX,
+            #     0.5,
+            #     (0, 255, 0),
+            #     2,
+            # )
+
+        global_state.output_stack.put((frame_number, boxes))
+        global_state.data_stack.put((frame_number, detections))
 
 
 def start_process_thread(global_state):

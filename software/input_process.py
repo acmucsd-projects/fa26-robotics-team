@@ -8,7 +8,7 @@ import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 
-from global_state import Global, put_latest
+from global_state import Global
 import urllib.request
 
 import math
@@ -170,21 +170,24 @@ def threadTarget(global_state: Global):
     try:
         # Phase 2: Stream frames to RF-DETR
         while cap.isOpened() and global_state.running:
-            ret, frame = cap.read()
-
-            if not ret:
-                break
-
             if frame_number % 3 == 0:
+
+                ret, frame = cap.read()
+
+                if not ret:
+                    break
+
+                global_state.preview_stack.put((frame_number, frame_rgb.copy()))
+
+
                 frame_rgb = cv2.cvtColor(
                     frame,
                     cv2.COLOR_BGR2RGB
                 )
 
-                put_latest(
-                    global_state.input_queue,
-                    (frame_number, frame_rgb)
-                )
+                global_state.input_stack.put((frame_number, frame_rgb))
+                    
+                
 
             frame_number += 1
 
