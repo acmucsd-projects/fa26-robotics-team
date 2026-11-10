@@ -1,0 +1,128 @@
+#VRML_SIM R2025b utf8
+
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/4fb192938257f4b5c1656e1aaa8a755c4570dd76/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/4fb192938257f4b5c1656e1aaa8a755c4570dd76/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/4fb192938257f4b5c1656e1aaa8a755c4570dd76/projects/objects/floors/protos/RectangleArena.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/4fb192938257f4b5c1656e1aaa8a755c4570dd76/projects/humans/pedestrian/protos/Pedestrian.proto"
+
+WorldInfo {
+}
+Viewpoint {
+  orientation -0.1407965992710481 0.07325025172105766 0.9873250317177771 2.192577877593523
+  position 10.311769483573693 -9.731074639877836 4.99742732406862
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+}
+Robot {
+  children [
+    HingeJoint {
+      jointParameters HingeJointParameters {
+        axis 0 0 1
+      }
+      device [
+        RotationalMotor {
+          name "yaw_motor"
+        }
+      ]
+      endPoint Solid {
+        children [
+          Shape {
+            appearance PBRAppearance {
+            }
+            geometry Cylinder {
+              height 0.2
+              radius 0.02
+            }
+          }
+          HingeJoint {
+            jointParameters HingeJointParameters {
+              position 0.3
+              axis 0 -1 0
+            }
+            device [
+              RotationalMotor {
+                name "pitch_motor"
+              }
+            ]
+            endPoint Solid {
+              translation -0.04432803099920093 0 0.14330047336884086
+              rotation 0.9779121993942309 -0.14779643060971379 0.14779697349731402 1.5931335308889591
+              children [
+                Shape {
+                  appearance PBRAppearance {
+                  }
+                  geometry Box {
+                    size 0.02 0.08 0.15
+                  }
+                }
+                Camera {
+                  translation 0 0 -0.05
+                  rotation 1 0 0 -1.5708
+                  name "gimbal_camera"
+                  fieldOfView 1
+                  width 640
+                  height 480
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+    Shape {
+      appearance PBRAppearance {
+      }
+      geometry Cylinder {
+        height 0.1
+        radius 0.05
+      }
+    }
+  ]
+  controller "gimbal_test"
+}
+Pedestrian {
+  hidden translation_2 0.019260256386829246 -5.551115123125783e-17 0.002000432457473278
+  hidden rotation_2 0 -1 0 0.10181818181765881
+  hidden translation_3 0.004400189936760092 5.551115123125783e-17 -0.0020874119731444513
+  hidden rotation_3 0 0.9999999999999999 0 0.04945454545429302
+  hidden translation_4 -0.018333515866040227 -5.551115123125783e-17 0.0012778316929419886
+  hidden rotation_4 0 -1 0 0.04945454545429302
+  hidden translation_5 -0.020469314690892353 1.6653345369377348e-16 2.528207705343455e-05
+  hidden rotation_5 0 1 0 0.10763636363580836
+  hidden translation_6 -0.004230900241047782 -1.1102230246251565e-16 0.0017636720191281097
+  hidden rotation_6 0 -0.9999999999999999 0 0.046545454545216955
+  hidden translation_7 -0.012935064501932811 -2.7755575615628914e-17 0.0009961436746562247
+  hidden rotation_7 0 -1 0 0.034909090908919
+  hidden translation_8 0.05817906796924704 5.551115123125783e-17 -0.013711909761006724
+  hidden rotation_8 0 1 0 0.1978181818171726
+  hidden translation_9 -0.18476483137973504 8.326672684688674e-17 -0.015320305790467947
+  hidden rotation_9 0 -1 0 0.2443636363623838
+  hidden translation_11 -0.02630082899106228 0 0.002344724964183753
+  hidden rotation_11 0 -1 0 0.08727272727228212
+  hidden translation_12 0.03973705966085833 -2.7755575615628914e-17 -0.0026118943963683305
+  hidden rotation_12 0 1 0 0.05236363636335831
+  hidden translation_14 0.009689593256493814 0 -0.00013498030806757821
+  hidden rotation_14 0 -1 0 0.026181818181665782
+  translation 2.926 0.7909999999999999 1.2892727272727273
+  rotation 0 0 1 1.5707963267948966
+  controllerArgs [
+    "--speed=1.0"
+    "--trajectory=2.926 -0.233, 2.926 2.767"
+  ]
+  rightLegAngle -0.7463636363636363
+  rightLowerLegAngle 1.5178181818181817
+  rightFootAngle 0.07
+  leftLegAngle -0.11490909090909109
+  leftLowerLegAngle 0.2901818181818184
+  rightArmAngle -0.2778181818181819
+  rightLowerArmAngle -0.1047272727272727
+  rightHandAngle 0.04145454545454548
+  leftArmAngle 0.290909090909091
+  leftLowerArmAngle -0.3587272727272728
+  leftHandAngle -0.11127272727272725
+  headAngle 0.12109090909090911
+}
