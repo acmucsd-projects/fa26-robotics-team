@@ -1,8 +1,4 @@
-import cv2
-import os
 from controller import Robot
-import numpy as np
-from rfdetr import RFDETR
 
 # Initialize the Robot instance
 robot = Robot()
@@ -28,28 +24,6 @@ def delay(seconds):
     while robot.step(timestep) != -1:
         if robot.getTime() - start_time >= seconds:
             break
-
-# MODEL_PATH = os.path.abspath("software/simulator/controllers/gimbal_test/Arnavrfdetr_2.pth")
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL_PATH = os.path.join(BASE_DIR, "Arnavrfdetr_2.pth")
-
-
-# Load checkpoint using absolute path
-model = RFDETR.from_checkpoint(MODEL_PATH)
-
-def process_frame_and_infer():
-    raw_bytes = camera.getImage()
-    if raw_bytes is None:
-        return None
-
-    height = camera.getHeight()
-    width = camera.getWidth()
-    frame_bgra = np.frombuffer(raw_bytes, np.uint8).reshape((height, width, 4))
-
-    frame_rgb = cv2.cvtColor(frame_bgra, cv2.COLOR_BGRA2RGB)
-    frame_bgr = cv2.cvtColor(frame_bgra, cv2.COLOR_BGRA2BGR)
-
-    detections = model.predict(frame_rgb, threshold=0.2)
 
 print("--- Starting Gimbal Diagnostic Test ---")
 
