@@ -1,7 +1,8 @@
 import cv2
-
+import os
 from controller import Robot
 import numpy as np
+from rfdetr import RFDETR
 
 # Initialize the Robot instance
 robot = Robot()
@@ -87,57 +88,3 @@ while robot.step(timestep) != -1:
     delay(2.0)
 
     print("--- Cycle Complete. Repeating... ---")
-
-
-# import cv2
-# import queue
-
-# from gimbal_global_state import Global
-# from gimbal_input import start_input_thread
-# from gimbal_processing import start_process_thread
-
-# robot = Robot()
-# timestep = int(robot.getBasicTimeStep())
-
-
-# camera = robot.getDevice("gimbal_camera")
-# camera.enable(timestep)
-
-# width = camera.getWidth()
-# height = camera.getHeight()
-
-
-# yaw_motor = robot.getDevice("yaw_motor")
-# pitch_motor = robot.getDevice("pitch_motor")
-
-# yaw_motor.setVelocity(1.0)
-# pitch_motor.setVelocity(1.0)
-
-
-# global_state = Global()
-# global_state.running = True
-
-# process_thread = start_process_thread(global_state)
-# input_thread = start_input_thread(global_state)
-
-# try:
-    # while (
-        # input_thread.is_alive()
-        # or process_thread.is_alive()
-        # or not global_state.output_queue.empty()
-    # ):
-        # try:
-            # _, frame_rgb = global_state.output_queue.get(timeout=0.01)
-            # frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
-            # cv2.imshow("RF-DETR Live Feed", frame_bgr)
-       
-        # except queue.Empty:
-            # pass
-
-        # if cv2.waitKey(1) & 0xFF == ord("q"):
-            # global_state.running = False
-# finally:
-    # global_state.running = False
-    # input_thread.join()
-    # process_thread.join()
-    # cv2.destroyAllWindows()

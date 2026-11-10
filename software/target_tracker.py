@@ -52,8 +52,8 @@ class TargetTracker:
         if not candidates:
             return None
 
-        # Prefer smallest containing box if boxes overlap
-        box = min(
+        # Prefer biggest containing box if boxes overlap
+        box = max(
             candidates,
             key=lambda b: (b[2]-b[0]) * (b[3]-b[1])
         )
