@@ -1,4 +1,3 @@
-
 import queue
 import cv2
 import threading
@@ -23,6 +22,11 @@ HAND_MODEL_PATH = BASE_DIR / "hand_landmarker.task"
 
 PERSON_CLASS_ID = 0
 DETECTION_THRESHOLD = 0.2
+
+ROI_W = 385
+ROI_H = 385
+ROI_PADDING = 0.20
+MAX_MISSES = 5
 
 model = RFDETR.from_checkpoint(str(MODEL_PATH))
 
@@ -83,11 +87,47 @@ def download_hand_model():
         str(HAND_MODEL_PATH)
     )
 
+def make_roi(box, frame_width, frame_height):
+    x1, y1, x2, y2 = box
+
+    box_width = max(1, x2 - x1)
+    box_height = max(1, y2 - y1)
+
+    roi_width = min(
+        max(ROI_W, int(box_width * (1 + 2 * ROI_PADDING))),
+        frame_width
+    )
+
+    roi_height = min(
+        max(ROI_H, int(box_height * (1 + 2 * ROI_PADDING))),
+        frame_height
+    )
+
+    center_x = (x1 + x2) / 2
+    center_y = (y1 + y2) / 2
+
+    roi_x = int(max(
+        0,
+        min(center_x - roi_width / 2, frame_width - roi_width)
+    ))
+
+    roi_y = int(max(
+        0,
+        min(center_y - roi_height / 2, frame_height - roi_height)
+    ))
+
+    return (roi_x, roi_y, roi_width, roi_height)
+
 
 def threadTarget(global_state):
     tracker = TargetTracker()
     hands = None
     acquisition_finished = False
+
+    target_lost = False
+
+    roi = None
+    misses = 0
 
     start_time = time.monotonic()
     last_timestamp = -1
@@ -118,8 +158,35 @@ def threadTarget(global_state):
 
             height, width = frame.shape[:2]
 
+            if target_lost:
+                global_state.center_point = None
+
+                global_state.output_stack.put(
+                    (frame_number, frame)
+                )
+
+                continue
+
+            center = None
+
+            if acquisition_finished and roi is not None:
+                rx, ry, rw, rh = roi
+
+                input_frame = frame[
+                    ry:ry + rh,
+                    rx:rx + rw
+                ]
+
+                offset_x = rx
+                offset_y = ry
+
+            else:
+                input_frame = frame
+                offset_x = 0
+                offset_y = 0
+
             detections = model.predict(
-                frame,
+                input_frame,
                 threshold=DETECTION_THRESHOLD
             )
 
@@ -127,7 +194,9 @@ def threadTarget(global_state):
                 detections.class_id == PERSON_CLASS_ID
             ]
 
-            center = None
+            if offset_x != 0 or offset_y != 0:
+                detections.xyxy[:, [0, 2]] += offset_x
+                detections.xyxy[:, [1, 3]] += offset_y
 
             if not acquisition_finished:
                 mp_image = mp.Image(
@@ -163,6 +232,13 @@ def threadTarget(global_state):
                     )
 
                     if center is not None:
+                        roi = make_roi(
+                            tracker.target_box,
+                            width,
+                            height
+                        )
+
+
                         acquisition_finished = True
 
                         hands.close()
@@ -173,6 +249,27 @@ def threadTarget(global_state):
 
             elif tracker.target_box is not None:
                 center = tracker.update(detections)
+
+                if center is not None:
+                    roi = make_roi(
+                        tracker.target_box,
+                        width,
+                        height
+                    )
+
+                    misses = 0
+
+                else:
+                    misses += 1
+
+                    if misses >= MAX_MISSES:
+                        print("[PROCESSING] Target lost.")
+
+                        target_lost = True
+                        roi = None
+                        tracker.reset()
+            else:
+                target_lost = True
 
             global_state.center_point = center
 
@@ -227,6 +324,17 @@ def threadTarget(global_state):
                     0.7,
                     (255, 255, 0),
                     2
+                )
+
+            if roi is not None:
+                rx, ry, rw, rh = roi
+
+                cv2.rectangle(
+                    frame,
+                    (rx, ry),
+                    (rx + rw, ry + rh),
+                    (0, 0, 255),
+                    1
                 )
 
             
