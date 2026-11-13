@@ -31,6 +31,7 @@ print("--- Starting Gimbal Diagnostic Test ---")
 delay(1.0)
 
 while robot.step(timestep) != -1:
+    
     # 1. Move Left
     print("Action: Pan Left")
     yaw_motor.setPosition(0.5)   # ~28 degrees Left
