@@ -118,7 +118,43 @@ class TargetTracker:
 
         # No sufficiently close detection
         self.missing_frames += 1
-        self.center_point = None
+        # self.center_point = None
+
+        if self.missing_frames >= 30:
+            print("[TRACKER] Target lost.")
+            self.reset()
+
+        return None
+
+    def relock_target(self, detections, previous_center):
+        if previous_center is None:
+            return None
+
+        best_box = None
+        best_distance = float("inf")
+
+        for box in detections.xyxy:
+            center = self.get_center(box)
+
+            distance = math.dist(previous_center, center)
+
+            if distance > self.max_distance:
+                continue
+
+            if distance < best_distance:
+                best_distance = distance
+                best_box = box
+
+        if best_box is not None:
+            self.target_box = best_box.copy()
+            self.center_point = self.get_center(best_box)
+            self.missing_frames = 0
+
+            print("[TRACKER] Target relocked.")
+            return self.center_point
+
+        # No sufficiently close detection
+        self.missing_frames += 1
 
         if self.missing_frames >= 30:
             print("[TRACKER] Target lost.")
@@ -128,5 +164,5 @@ class TargetTracker:
 
     def reset(self):
         self.target_box = None
-        self.center_point = None
+        # self.center_point = None
         self.missing_frames = 0

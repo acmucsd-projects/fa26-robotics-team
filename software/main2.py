@@ -11,7 +11,7 @@ class Main():
         self.global_state = Global()
         self.global_state.running = True
         self.process_thread = start_process_thread(self.global_state)
-        self.output_thread = start_output_thread(self.global_state)
+        # self.output_thread = start_output_thread(self.global_state)
         self.input_thread = start_input_thread(self.global_state)
 
     def run(self):
@@ -22,7 +22,7 @@ class Main():
                 or not self.global_state.output_queue.empty()
             ):
                 try:
-                    _, frame_rgb = self.global_state.output_queue.get(timeout=0.01)
+                    _, frame_rgb = self.global_state.output_queue.get(timeo)
                     frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
                     cv2.imshow("RF-DETR Live Feed", frame_bgr)
                 except queue.Empty:
@@ -34,7 +34,7 @@ class Main():
             self.global_state.running = False
             self.input_thread.join()
             self.process_thread.join()
-            self.output_thread.join()
+            # self.output_thread.join()
             cv2.destroyAllWindows()
         print(f"Output queue size: {self.global_state.data_queue.qsize()}")
         
@@ -43,7 +43,7 @@ def main():
     global_state.running = True
 
     process_thread = start_process_thread(global_state)
-    output_thread = start_output_thread(global_state)
+    # output_thread = start_output_thread(global_state)
     input_thread = start_input_thread(global_state)
 
     try:
