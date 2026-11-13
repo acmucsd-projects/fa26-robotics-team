@@ -1,5 +1,4 @@
 import queue
-
 import cv2
 
 from global_state import Global
