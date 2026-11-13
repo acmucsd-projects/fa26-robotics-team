@@ -82,7 +82,7 @@ def main():
 
         input_thread.join()
         process_thread.join()
-        output_thread.join()
+        # output_thread.join()
 
         cv2.destroyAllWindows()
 
