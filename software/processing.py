@@ -25,7 +25,6 @@ DETECTION_THRESHOLD = 0.2
 
 ROI_W = 385
 ROI_H = 385
-ROI_PADDING = 0.20
 MAX_MISSES = 5
 
 model = RFDETR.from_checkpoint(str(MODEL_PATH))
@@ -90,22 +89,15 @@ def download_hand_model():
 def make_roi(box, frame_width, frame_height):
     x1, y1, x2, y2 = box
 
-    box_width = max(1, x2 - x1)
-    box_height = max(1, y2 - y1)
-
-    roi_width = min(
-        max(ROI_W, int(box_width * (1 + 2 * ROI_PADDING))),
-        frame_width
-    )
-
-    roi_height = min(
-        max(ROI_H, int(box_height * (1 + 2 * ROI_PADDING))),
-        frame_height
-    )
-
+    # Center of detected bounding box
     center_x = (x1 + x2) / 2
     center_y = (y1 + y2) / 2
 
+    # Fixed ROI dimensions
+    roi_width = ROI_W
+    roi_height = ROI_H
+
+    # Keep ROI within frame boundaries
     roi_x = int(max(
         0,
         min(center_x - roi_width / 2, frame_width - roi_width)
@@ -273,29 +265,58 @@ def threadTarget(global_state):
 
             global_state.center_point = center
 
-            for box, conf in zip(
-                detections.xyxy,
-                detections.confidence
-            ):
-                x1, y1, x2, y2 = map(int, box)
+            if tracker.target_box is not None:
+                x1, y1, x2, y2 = map(int, tracker.target_box)
 
                 cv2.rectangle(
                     frame,
                     (x1, y1),
                     (x2, y2),
-                    (0, 255, 0),
-                    2
+                    (255, 255, 0),
+                    3
+                )
+
+                cv2.circle(
+                    frame,
+                    center,
+                    7,
+                    (255, 0, 0),
+                    -1
                 )
 
                 cv2.putText(
                     frame,
-                    f"Person: {conf:.2f}",
-                    (x1, max(y1 - 10, 15)),
+                    "TARGET LOCKED",
+                    (x1, max(y1 - 30, 20)),
                     cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5,
-                    (0, 255, 0),
+                    0.7,
+                    (255, 255, 0),
                     2
                 )
+            else:
+                for box, conf in zip(
+                    detections.xyxy,
+                    detections.confidence
+                ):
+                    x1, y1, x2, y2 = map(int, box)
+
+                    cv2.rectangle(
+                        frame,
+                        (x1, y1),
+                        (x2, y2),
+                        (0, 255, 0),
+                        2
+                    )
+
+                    cv2.putText(
+                        frame,
+                        f"Person: {conf:.2f}",
+                        (x1, max(y1 - 10, 15)),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.5,
+                        (0, 255, 0),
+                        2
+                    )
 
             if tracker.target_box is not None and center is not None:
                 x1, y1, x2, y2 = map(int, tracker.target_box)
