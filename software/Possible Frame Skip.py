@@ -38,7 +38,7 @@ while cap.isOpened():
 
             center_point = (round(x_center), round(y_center))
 
-            annotated_frame = results[0].plot()
+            annotated_frame = results[0][:1].plot()
             cv2.circle(annotated_frame, center = center_point, radius = 5, color = (0, 0, 255), thickness = -1)
 
 
