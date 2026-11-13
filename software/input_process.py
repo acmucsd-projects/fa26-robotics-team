@@ -28,7 +28,7 @@ def threadTarget(global_state: Global):
 
             # global_state.preview_stack.put((frame_number, frame.copy()))
 
-            if frame_number % 3 == 0:
+            if frame_number % 1 == 0:
                 frame_rgb = cv2.cvtColor(
                     frame,
                     cv2.COLOR_BGR2RGB
