@@ -22,7 +22,7 @@ class Main():
                 or not self.global_state.output_queue.empty()
             ):
                 try:
-                    _, frame_rgb = self.global_state.output_queue.get(timeo)
+                    _, frame_rgb = self.global_state.output_queue.get(timeout=0.01)
                     frame_bgr = cv2.cvtColor(frame_rgb, cv2.COLOR_RGB2BGR)
                     cv2.imshow("RF-DETR Live Feed", frame_bgr)
                 except queue.Empty:
