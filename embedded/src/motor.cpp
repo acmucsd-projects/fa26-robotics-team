@@ -3,6 +3,7 @@
 #include <Wire.h>
 #include "SCServo.h"
 #include <vector>
+#include <motor.hpp>
 
 SMS_STS st;
 
@@ -20,28 +21,8 @@ void MovePos(int id, int position) {
 	st.WritePosEx(id, position, 2000, 50);
 }
 
-void setup() {
-	// baud rate 115200
-	Serial.begin(115200);
-
-	Serial1.begin(1000000, SERIAL_8N1, SERVO_RX, SERVO_TX);
-	st.pSerial = &Serial1;
-	// st.WritePosEx(SERVO1, SERVO_CENTER, 2000, 50);
-	MovePos(SERVO2, 2438);
-	delay(1500);
-	Serial.println("Scanning bus");
-
-	for(int id = 1; id <= 20; id++) {
-		if (st.Ping(id)==id) {
-			Serial.print("Found servo ID:");
-			Serial.println(id);
-		}
-	}
-
-	int currPos = st.ReadPos(SERVO2);
-
-	delay(500);
-
+ServoLimits calibrateServo(int id, int startPos) {
+	int currPos = startPos;
 	while (st.ReadCurrent(SERVO2) < 7) {
 		MovePos(SERVO2, currPos-10);
 		currPos -= 10;
@@ -55,7 +36,7 @@ void setup() {
 	MIN1 = currPos + 10;
 	currPos = SERVO_INVCENTER;
 
-	MovePos(SERVO2, 2438);
+	MovePos(SERVO2, startPos);
 	delay(1000);
 
 	while (st.ReadCurrent(SERVO2) < 7) {
@@ -71,10 +52,9 @@ void setup() {
 
 	Serial.println(MIN1);
 	Serial.println(MAX1);
-
-}
-
-void loop() {
 	
+	return(ServoLimits{MAX1, MIN1, (MAX1+MIN1)/2});
+
 }
+
 
