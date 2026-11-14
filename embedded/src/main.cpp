@@ -3,7 +3,7 @@
 #include <Arduino.h>
 
 /* sda 6, scl 7, replace with the line the calibrate firmware prints */
-Imu imu(6, 7);
+Imu imu(6, 7, 0x68, {31.57, -498.17, 91.18}, {1.0106, 1.0074, 0.9943});
 ComplementaryFilter filter;
 
 void setup() {
@@ -41,12 +41,14 @@ void loop() {
   last = now;
 
   /* |a| should be about 9.81 when the board is still */
-  Serial.printf("accel (m/s^2): %7.2f %7.2f %7.2f  |a| %6.2f   gyro (deg/s): "
-                "%8.2f %8.2f %8.2f   tilt %7.2f  pan %7.2f\n",
-                r.accel.x, r.accel.y, r.accel.z,
-                sqrtf(r.accel.x * r.accel.x + r.accel.y * r.accel.y +
-                      r.accel.z * r.accel.z),
-                r.gyro.x, r.gyro.y, r.gyro.z, filter.tilt, filter.pan);
-  /* ~100hz, matches the imu rate */
-  delay(10);
+  static unsigned long lastPrint = 0;
+  if (millis() - lastPrint >= 10) {
+    lastPrint = millis();
+    Serial.printf("accel (m/s^2): %7.2f %7.2f %7.2f  |a| %6.2f   gyro (deg/s): "
+                  "%8.2f %8.2f %8.2f   tilt %7.2f  pan %7.2f\n",
+                  r.accel.x, r.accel.y, r.accel.z,
+                  sqrtf(r.accel.x * r.accel.x + r.accel.y * r.accel.y +
+                        r.accel.z * r.accel.z),
+                  r.gyro.x, r.gyro.y, r.gyro.z, filter.tilt, filter.pan);
+  }
 }

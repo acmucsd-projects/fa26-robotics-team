@@ -21,10 +21,9 @@ struct ImuReading {
 
 class Imu {
 public:
-  /* addr is 0x69 on our board, 0x68 if the SDO pin is pulled low */
   /* accelOffset (raw counts) and accelScale come from the calibrate firmware */
   /* (pio run -e calibrate), it prints a line to paste into main.cpp */
-  Imu(uint8_t sda, uint8_t scl, int8_t addr = 0x69, Vec3<float> accelOffset = 0,
+  Imu(uint8_t sda, uint8_t scl, int8_t addr = 0x68, Vec3<float> accelOffset = 0,
       Vec3<float> accelScale = 1);
 
   /* starts I2C on our pins, sets accel to +-4g 100hz and gyro to 100hz */
@@ -39,6 +38,7 @@ private:
   /* the library has no setter for range and rate, so we write registers
    * ourselves */
   bool writeReg(uint8_t reg, uint8_t value);
+  bool readRaw(int16_t *d);
 
   DFRobot_BMI160 bmi160;
   uint8_t sda, scl;

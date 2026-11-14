@@ -10,6 +10,7 @@ Imu::Imu(uint8_t sda, uint8_t scl, int8_t addr, Vec3<float> accelOffset,
 bool Imu::begin() {
   Wire.end();
   Wire.begin(sda, scl);
+  Wire.setClock(100000);
 
   /* ok is only true if every step works */
   /* config byte = filter mode in the top half (<< 4) | output rate in the
@@ -38,7 +39,7 @@ void Imu::averageRaw(Vec3<float> &gyro, Vec3<float> &accel, int samples) {
   /* n only goes up on a good read, so we always average exactly samples
    * readings */
   for (int n = 0; n < samples;) {
-    if (bmi160.getAccelGyroData(d) == BMI160_OK) {
+    if (readRaw(d)) {
       for (int i = 0; i < 6; i++)
         sum[i] += d[i];
       n++;
@@ -55,9 +56,24 @@ void Imu::calibrateGyro(int samples) {
   averageRaw(gyroBias, accel, samples);
 }
 
+bool Imu::readRaw(int16_t *d) {
+  Wire.beginTransmission(addr);
+  Wire.write(BMI160_GYRO_DATA_ADDR);
+  if (Wire.endTransmission() != 0)
+    return false;
+  if (Wire.requestFrom(addr, 12) != 12)
+    return false;
+  for (int i = 0; i < 6; i++) {
+    uint8_t lsb = Wire.read();
+    uint8_t msb = Wire.read();
+    d[i] = (int16_t)(msb << 8 | lsb);
+  }
+  return true;
+}
+
 bool Imu::read(ImuReading &out) {
   int16_t d[6];
-  if (bmi160.getAccelGyroData(d) != BMI160_OK)
+  if (!readRaw(d))
     return false;
 
   /* d is gyro 0-2 then accel 3-5 */
