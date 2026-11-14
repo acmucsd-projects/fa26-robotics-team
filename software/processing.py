@@ -181,49 +181,33 @@ def threadTarget(global_state):
                 detections.xyxy[:, [1, 3]] += offset_y
 
             if not acquisition_finished:
-                # # MediaPipe needs timestamps that increase with every frame
-                # timestamp = max(int((time.monotonic() - start_time) * 1000),
-                #                 last_timestamp + 1)
-                # last_timestamp = timestamp
+                # MediaPipe needs timestamps that increase with every frame
+                timestamp = max(int((time.monotonic() - start_time) * 1000),
+                                last_timestamp + 1)
+                last_timestamp = timestamp
 
-                # # Look for an open hand to identify which person to follow
-                # result = hands.detect_for_video(
-                #     mp.Image(image_format=mp.ImageFormat.SRGB, data=frame),
-                #     timestamp
-                # )
+                # Look for an open hand to identify which person to follow
+                result = hands.detect_for_video(
+                    mp.Image(image_format=mp.ImageFormat.SRGB, data=frame),
+                    timestamp
+                )
 
-                # for landmarks in result.hand_landmarks:
-                #     if is_open_raised_hand(landmarks):
-                #         center = tracker.lock_target(
-                #             detections, get_palm_center(landmarks, width, height)
-                #         )
+                for landmarks in result.hand_landmarks:
+                    if is_open_raised_hand(landmarks):
+                        center = tracker.lock_target(
+                            detections, get_palm_center(landmarks, width, height)
+                        )
 
-                #         if center is not None:
-                #             # Lock the person and start tracking inside the ROI
-                #             acquisition_finished = True
-                #             roi = make_roi(tracker.target_box, width, height)
+                        if center is not None:
+                            # Lock the person and start tracking inside the ROI
+                            acquisition_finished = True
+                            roi = make_roi(tracker.target_box, width, height)
 
-                #             # Hand detection is no longer needed after locking
-                #             hands.close()
-                #             hands = None
-                #             print('[PROCESSING] Target locked. MediaPipe stopped.')
-                #             break
-                if len(detections) > 0:
-                    box = detections.xyxy[0]
-
-                    tracker.target_box = box.copy()
-                    tracker.center_point = tracker.get_center(box)
-
-                    center = tracker.center_point
-                    acquisition_finished = True
-
-                    roi = make_roi(
-                        tracker.target_box,
-                        width,
-                        height
-                    )
-
-                    print("[PROCESSING] First person detected. Target locked.")
+                            # Hand detection is no longer needed after locking
+                            hands.close()
+                            hands = None
+                            print('[PROCESSING] Target locked. MediaPipe stopped.')
+                            break
 
             elif tracker.target_box is not None:
                 # Match the current detections against the previous target
@@ -244,31 +228,14 @@ def threadTarget(global_state):
 
             elif target_lost:
                 # Search the full frame for a person near the last known center
-                # center = tracker.relock_target(detections, tracker.center_point)
+                center = tracker.relock_target(detections, tracker.center_point)
 
-                # if center is not None:
-                #     # Resume ROI tracking once the target has been found
-                #     print('[PROCESSING] Target relocked.')
-                #     target_lost = False
-                #     misses = 0
-                #     roi = make_roi(tracker.target_box, width, height)
-                if len(detections) > 0:
-                    box = detections.xyxy[0]
-
-                    tracker.target_box = box.copy()
-                    tracker.center_point = tracker.get_center(box)
-
-                    center = tracker.center_point
-                    acquisition_finished = True
-
-                    roi = make_roi(
-                        tracker.target_box,
-                        width,
-                        height
-                    )
-
-                    print("[PROCESSING] First person detected. Target locked.")
-
+                if center is not None:
+                    # Resume ROI tracking once the target has been found
+                    print('[PROCESSING] Target relocked.')
+                    target_lost = False
+                    misses = 0
+                    roi = make_roi(tracker.target_box, width, height)
             else:
                 target_lost = True
 
