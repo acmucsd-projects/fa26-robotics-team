@@ -5,33 +5,89 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import numpy as np
 import paho.mqtt.client as mqtt
 from controller import Robot
-SKIN_POSITION = "4 -1.5 0"
-SKIN_EXTRA_FIELDS = ""
-skin_spawned = False
+from controller import Supervisor
+from pathlib import Path
+import math
 
-def spawn_character_skin():
-    """Spawn a CharacterSkin (wrapped in a Robot) at runtime. Returns the node or None.
+robot = Supervisor()
+timestep = int(robot.getBasicTimeStep())
 
-    A Skin node can only live inside a Robot, so it can't be inserted
-    directly at the top level of the world.
-    """
-    if robot.getFromDef("SKIN_NODE") is not None:
-        return robot.getFromDef("SKIN_NODE")  # already exists, don't duplicate
+# Character settings
+SKIN_START = (4.0, -1.5, 0.0)
+WALK_SPEED = 0.8
+WALK_DISTANCE = 3.0
+FACING_OFFSET = 0.0
+
+# Locate the FBX relative to this controller
+PROJECT_DIR = Path(__file__).resolve().parents[2]
+MODEL_PATH = (
+    PROJECT_DIR / "meshes" / "human.fbx"
+).as_uri()
+
+
+def spawn_character():
+    existing = robot.getFromDef("SKIN_NODE")
+
+    if existing is not None:
+        return existing
+
     children = robot.getRoot().getField("children")
-    children.importMFNodeFromString(
-        -1,
-        f'DEF SKIN_NODE Robot {{ '
-        f'translation {SKIN_POSITION} '
-        f'name "skin_holder" '
-        f'controller "<none>" '
-        f'children [ CharacterSkin {{ name "skin" {SKIN_EXTRA_FIELDS} }} ] }}'
-    )
-    node = robot.getFromDef("SKIN_NODE")
-    if node is None:
-        print("Warning: CharacterSkin spawn failed. Check the Webots console.")
-    else:
-        print("CharacterSkin spawned.")
-    return node
+
+    node_string = f"""
+    DEF SKIN_NODE Robot {{
+      translation {SKIN_START[0]} {SKIN_START[1]} {SKIN_START[2]}
+      name "skin_holder"
+      controller "<none>"
+      children [
+        Skin {{
+          name "human_skin"
+          modelUrl "{MODEL_PATH}"
+        }}
+      ]
+    }}
+    """
+
+    children.importMFNodeFromString(-1, node_string)
+
+    return robot.getFromDef("SKIN_NODE")
+
+
+def walk_pose(t):
+    period = 2.0 * WALK_DISTANCE
+    phase = (WALK_SPEED * t) % period
+
+    if phase < WALK_DISTANCE:
+        return phase, math.pi / 2
+
+    return period - phase, -math.pi / 2
+
+
+# Spawn character
+human = spawn_character()
+
+if human is None:
+    raise RuntimeError("Could not spawn human skin.")
+
+translation = human.getField("translation")
+rotation = human.getField("rotation")
+
+print("Human skin spawned.")
+
+# Move the character continuously
+while robot.step(timestep) != -1:
+
+    y_offset, heading = walk_pose(robot.getTime())
+
+    translation.setSFVec3f([
+        SKIN_START[0],
+        SKIN_START[1] + y_offset,
+        SKIN_START[2]
+    ])
+
+    rotation.setSFRotation([
+        0, 0, 1,
+        heading + FACING_OFFSET
+    ])
 
 try:
     import cv2

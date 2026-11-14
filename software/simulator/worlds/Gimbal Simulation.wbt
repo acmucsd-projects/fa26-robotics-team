@@ -131,3 +131,11 @@ Pedestrian {
   leftHandAngle -0.23545454545454503
   headAngle 0.01636363636363683
 }
+Robot {
+  supervisor TRUE
+  controller "gimbal_test"
+
+  children [
+    # Your existing camera and motors
+  ]
+}
