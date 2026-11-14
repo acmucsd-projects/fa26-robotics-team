@@ -5,6 +5,33 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 import numpy as np
 import paho.mqtt.client as mqtt
 from controller import Robot
+SKIN_POSITION = "4 -1.5 0"
+SKIN_EXTRA_FIELDS = ""
+skin_spawned = False
+
+def spawn_character_skin():
+    """Spawn a CharacterSkin (wrapped in a Robot) at runtime. Returns the node or None.
+
+    A Skin node can only live inside a Robot, so it can't be inserted
+    directly at the top level of the world.
+    """
+    if robot.getFromDef("SKIN_NODE") is not None:
+        return robot.getFromDef("SKIN_NODE")  # already exists, don't duplicate
+    children = robot.getRoot().getField("children")
+    children.importMFNodeFromString(
+        -1,
+        f'DEF SKIN_NODE Robot {{ '
+        f'translation {SKIN_POSITION} '
+        f'name "skin_holder" '
+        f'controller "<none>" '
+        f'children [ CharacterSkin {{ name "skin" {SKIN_EXTRA_FIELDS} }} ] }}'
+    )
+    node = robot.getFromDef("SKIN_NODE")
+    if node is None:
+        print("Warning: CharacterSkin spawn failed. Check the Webots console.")
+    else:
+        print("CharacterSkin spawned.")
+    return node
 
 try:
     import cv2
@@ -200,6 +227,11 @@ print("--- Gimbal MQTT Controller Active ---")
 # --- 5. Main Simulation Loop ---
 try:
     while robot.step(timestep) != -1:
+
+        # if not skin_spawned:
+        #     character_skin = spawn_character_skin()
+        #     skin_spawned = True
+        
         if position_updated:
             yaw_motor.setPosition(target_yaw)
             pitch_motor.setPosition(target_pitch)
