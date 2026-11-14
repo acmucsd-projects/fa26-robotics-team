@@ -94,3 +94,19 @@ bool Imu::writeReg(uint8_t reg, uint8_t value) {
   Wire.write(value);
   return Wire.endTransmission() == 0;
 }
+
+void MovePos(int id, int position_number);
+bool imuDriveMotors(Imu &imu) {
+  ImuReading r;
+  if (!imu.read(r))
+    return false;
+
+  float pitch =
+      atan2(-r.accel.x, sqrt(r.accel.y * r.accel.y + r.accel.z * r.accel.z)) *
+      180.0 / PI;
+  float roll = atan2(r.accel.y, r.accel.z) * 180.0 / PI;
+
+  MovePos(1, constrain(2048 + pitch * 4096.0 / 360.0, 1024, 3072));
+  MovePos(2, constrain(2048 + roll * 4096.0 / 360.0, 1024, 3072));
+  return true;
+}
