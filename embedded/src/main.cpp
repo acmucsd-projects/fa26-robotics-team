@@ -1,24 +1,35 @@
-#include "IMU.hpp"
-#include <Arduino.h>
+// #include <Arduino.h>
+// #include "IMU.hpp"
+// #include <motor.hpp>
 
-Imu imu(8, 9);
-// void MovePos(int id, int position_number);
+// Imu imu(8, 9);
 
-float Kp = 2.0, Ki = 0.0, Kd = 0.5;
-float integral = 0, lastError = 0;
+// // ---------- PID (one copy per motor) ----------
+// // each motor keeps its own memory (ierror, lastError).
+// struct PID {
+//   float kp, ki, kd;
+//   float ierror = 0;      // running total of error (I part)
+//   float lastError = 0;   // error from the previous loop (D part)
 
-float pid(float target, float measured, float dt) {
-  float error = target - measured;
-  integral += error * dt;
-  float derivative = (error - lastError) / dt;
-  lastError = error;
-  return Kp * error + Ki * integral + Kd * derivative;
-}
+//   float computePID(float input, float setPoint, float elapsedTime) {
+//     float error  = setPoint - input;
+//     ierror += error * elapsedTime;
+//     ierror = constrain(ierror, -50, 50);   // stop the I part growing forever
+//     float derror = (error - lastError) / elapsedTime;
+//     lastError = error;
+//     return kp * error + ki * ierror + kd * derror;
+//   }
+// };
 
-const int   SERVO_ID      = 1;
-const int   SERVO_CENTER  = 2048;
-const float STEPS_PER_DEG = 4096.0 / 360.0;
-unsigned long lastTime = 0;
+// PID pid1{2.0, 0.0, 0.5};   // motor 1: pitch (forward / back)
+// PID pid2{2.0, 0.0, 0.5};   // motor 2: roll  (left / right)
+
+// // ---------- Servo settings ----------
+// const int   SERVO1_ID     = 1;
+// const int   SERVO2_ID     = 2;
+// const int   SERVO_CENTER  = 2438;
+// const float STEPS_PER_DEG = 4096.0 / 360.0;
+// unsigned long previousTime = 0;
 
 // void setup() {
 //   Serial.begin(115200);
@@ -26,6 +37,7 @@ unsigned long lastTime = 0;
 //     delay(10);
 //   }
 
+//   // IMU
 //   if (!imu.begin()) {
 //     Serial.println("BMI160 init failed");
 //     while (true) {
@@ -35,6 +47,11 @@ unsigned long lastTime = 0;
 //   Serial.println("Calibrating gyro, keep the sensor still...");
 //   imu.calibrateGyro();
 //   Serial.println("BMI160 ready");
+
+
+//   delay(500);
+
+//   previousTime = millis();
 // }
 
 // void loop() {
@@ -45,18 +62,28 @@ unsigned long lastTime = 0;
 //     return;
 //   }
 
-//   unsigned long now = millis();
-//   float dt = (now - lastTime) / 1000.0;
-//   lastTime = now;
-//   if (dt <= 0) return;
+//   // time since last loop, in seconds
+//   unsigned long currentTime = millis();
+//   float elapsedTime = (currentTime - previousTime) / 1000.0;
+//   previousTime = currentTime;
+//   if (elapsedTime <= 0) return;
 
-//   float tilt = atan2(r.ax, r.az) * 180.0 / PI;
-//   float correction = pid(0.0, tilt, dt);
+//   // two tilt angles from the accelerometer
+//   float pitch = atan2(-r.ax, sqrt(r.ay * r.ay + r.az * r.az)) * 180.0 / PI;
+//   float roll  = atan2(r.ay, r.az) * 180.0 / PI;
 
-//   int pos = SERVO_CENTER + correction * STEPS_PER_DEG;
-// //   pos = constrain(pos, 1024, 3072);
-// //   MovePos(SERVO_ID, pos);
+//   // each motor gets its own PID, target = 0 degrees (level)
+//   float output1 = pid1.computePID(pitch, 0.0, elapsedTime);
+//   float output2 = pid2.computePID(roll,  0.0, elapsedTime);
 
-//   Serial.printf("tilt %6.2f  correction %6.2f  pos %d\n", tilt, correction, pos);
-//   delay(20);
+//   // degrees -> servo steps, kept within +/-90 degrees of centre
+//   int pos1 = constrain(SERVO_CENTER + output1 * STEPS_PER_DEG, 1024, 3072);
+//   int pos2 = constrain(SERVO_CENTER + output2 * STEPS_PER_DEG, 1024, 3072);
+
+//   MovePos(SERVO1_ID, pos1);
+//   MovePos(SERVO2_ID, pos2);
+
+//   Serial.printf("pitch %6.2f roll %6.2f | pos1 %d pos2 %d\n",
+//                 pitch, roll, pos1, pos2);
+//   delay(20);   // about 50 loops per second
 // }
