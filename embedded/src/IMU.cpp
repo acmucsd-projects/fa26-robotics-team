@@ -10,7 +10,6 @@ Imu::Imu(uint8_t sda, uint8_t scl, int8_t addr, Vec3<float> accelOffset,
 bool Imu::begin() {
   Wire.end();
   Wire.begin(sda, scl);
-  Wire.setClock(100000);
 
   /* ok is only true if every step works */
   /* config byte = filter mode in the top half (<< 4) | output rate in the
@@ -80,7 +79,8 @@ bool Imu::read(ImuReading &out) {
   Vec3<float> rawAccel(d[3], d[4], d[5]);
   Vec3<float> rawGyro(d[0], d[1], d[2]);
   /* accel: remove offset, fix sensitivity with scale, then raw to m/s^2 */
-  out.accel = (rawAccel - accelOffset) * accelScale * (9.80665f / ACCEL_LSB_PER_G);
+  out.accel =
+      (rawAccel - accelOffset) * accelScale * (9.80665f / ACCEL_LSB_PER_G);
   /* gyro: remove bias, then raw to deg/s */
   out.gyro = (rawGyro - gyroBias) / 16.4f;
   return true;
