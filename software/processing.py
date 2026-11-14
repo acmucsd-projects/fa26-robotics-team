@@ -15,6 +15,9 @@ from rfdetr import RFDETR
 from global_state import Global
 from target_tracker import TargetTracker
 
+import paho.mqtt.client as mqtt
+import time
+
 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "Arnavrfdetr_2.pth"
@@ -29,6 +32,30 @@ MAX_MISSES = 5
 
 model = RFDETR.from_checkpoint(str(MODEL_PATH))
 
+BROKER = "broker.emqx.io"
+PORT = 1883
+TOPIC = "gimbal/commands"
+
+def on_connect(client, userdata, flags, reason_code, properties):
+    if reason_code != 0:
+        print(f"Failed to connect, reason code: {reason_code}")
+
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+client.on_connect = on_connect
+
+client.connect(BROKER, PORT, keepalive=60)
+client.loop_start()
+
+def send(center):
+
+    message = f"{center[0]},{center[1]}"
+
+    info = client.publish(TOPIC, message, qos=1)
+    info.wait_for_publish()
+    print(f"Sent {message}")
+
+    # client.loop_stop()
+    # client.disconnect()
 
 def distance(a, b):
     return math.hypot(a.x - b.x, a.y - b.y)
@@ -112,6 +139,7 @@ def make_roi(box, frame_width, frame_height):
 
 
 def threadTarget(global_state):
+
     tracker = TargetTracker()
     hands = None
     acquisition_finished = False
@@ -264,6 +292,8 @@ def threadTarget(global_state):
                 target_lost = True
 
             global_state.center_point = center
+            if center is not None:
+                send(center)
 
             if tracker.target_box is not None:
                 x1, y1, x2, y2 = map(int, tracker.target_box)
