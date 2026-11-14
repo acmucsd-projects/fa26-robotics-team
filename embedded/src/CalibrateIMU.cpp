@@ -1,13 +1,15 @@
-/* accel calibration, run once */
-/* pio run -e calibrate -t upload -t monitor */
-/* prints a line to paste into main.cpp */
+// Accelerometer calibration. Separate firmware, run once per board:
+//   pio run -e calibrate -t upload -t monitor
+// Point each axis up, then down. Gravity is exactly 1g, so the up/down
+// readings tell us each axis's offset (middle) and scale (stretch).
+// At the end it prints an `Imu imu(...)` line to paste into main.cpp.
 
 #include "IMU.hpp"
 #include <Arduino.h>
 
-/* SDA & SCL */
 Imu imu(6, 7);
 
+// Repeats the prompt until something is typed in the serial monitor.
 void waitForEnter(const char *prompt) {
   while (Serial.available())
     Serial.read();
@@ -17,12 +19,13 @@ void waitForEnter(const char *prompt) {
   }
 }
 
+// Waits for the user, then averages the accel while the board sits still.
 Vec3<float> measure(const char *prompt) {
   waitForEnter(prompt);
-  Serial.println("   collecting samples bro... be patient");
+  Serial.println("  measuring, keep it still...");
   Vec3<float> gyro, accel;
-  imu.averageRaw(gyro, accel, 420);
-  Serial.println("  its done brochacho");
+  imu.averageRaw(gyro, accel, 400);
+  Serial.println("  done");
   return accel;
 }
 
@@ -30,22 +33,20 @@ void setup() {
   Serial.begin(115200);
   if (!imu.begin()) {
     while (true) {
-      Serial.println("init failed bruh");
+      Serial.println("BMI160 init failed");
       delay(1000);
     }
   }
 
-  Vec3<float> xu =
-      measure("hold it +X up, keep it there , press enter when up");
-  Vec3<float> xd =
-      measure("flip it so X points down dude, press enter when down");
-  Vec3<float> yu = measure("place it +Y now dude, press enter when up");
-  Vec3<float> yd =
-      measure("flip it so Y points down dude, press enter when down");
-  Vec3<float> zu = measure("place it +Z now dude, press enter when up");
-  Vec3<float> zd =
-      measure("flip it so Z points down dude, press enter when down");
+  Vec3<float> xu = measure("point +X up, then press enter");
+  Vec3<float> xd = measure("point +X down, then press enter");
+  Vec3<float> yu = measure("point +Y up, then press enter");
+  Vec3<float> yd = measure("point +Y down, then press enter");
+  Vec3<float> zu = measure("point +Z up, then press enter");
+  Vec3<float> zd = measure("point +Z down, then press enter");
 
+  // Each axis reads +1g up and -1g down. Offset = middle of the two,
+  // scale = what turns half the gap into exactly 1g.
   Vec3<float> up(xu.x, yu.y, zu.z);
   Vec3<float> down(xd.x, yd.y, zd.z);
   Vec3<float> offset = (up + down) / 2.0f;
