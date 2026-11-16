@@ -1,0 +1,88 @@
+#VRML_SIM R2025b utf8
+
+IMPORTABLE EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/630f9a052402d29745aa358727faa3af8d42db7e/projects/humans/skin_animated_humans/protos/CharacterSkin.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/4fb192938257f4b5c1656e1aaa8a755c4570dd76/projects/objects/backgrounds/protos/TexturedBackground.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/4fb192938257f4b5c1656e1aaa8a755c4570dd76/projects/objects/backgrounds/protos/TexturedBackgroundLight.proto"
+EXTERNPROTO "https://raw.githubusercontent.com/cyberbotics/webots/4fb192938257f4b5c1656e1aaa8a755c4570dd76/projects/objects/floors/protos/RectangleArena.proto"
+
+WorldInfo {
+}
+Viewpoint {
+  orientation -0.13580014067527432 0.07883436947394919 0.9875947873405473 2.10047693291662
+  position 12.10047266952383 -12.184655469828822 5.88514503541118
+}
+TexturedBackground {
+}
+TexturedBackgroundLight {
+}
+RectangleArena {
+}
+Robot {
+  children [
+    HingeJoint {
+      jointParameters HingeJointParameters {
+        axis 0 0 1
+      }
+      device [
+        RotationalMotor {
+          name "yaw_motor"
+        }
+      ]
+      endPoint Solid {
+        children [
+          Shape {
+            appearance PBRAppearance {
+            }
+            geometry Cylinder {
+              height 0.2
+              radius 0.02
+            }
+          }
+          HingeJoint {
+            jointParameters HingeJointParameters {
+              position 0.3
+              axis 0 -1 0
+            }
+            device [
+              RotationalMotor {
+                name "pitch_motor"
+              }
+            ]
+            endPoint Solid {
+              translation -0.044328030999200824 0 0.14330047336884053
+              rotation 0.977912199394231 -0.14779643060971379 0.14779697349731408 1.5931335308889596
+              children [
+                Shape {
+                  appearance PBRAppearance {
+                  }
+                  geometry Box {
+                    size 0.02 0.08 0.15
+                  }
+                }
+                Camera {
+                  translation 0 0 -0.05
+                  rotation 1 0 0 -1.5708
+                  name "gimbal_camera"
+                  fieldOfView 1
+                  width 640
+                  height 480
+                }
+              ]
+            }
+          }
+        ]
+      }
+    }
+    Shape {
+      appearance PBRAppearance {
+      }
+      geometry Cylinder {
+        height 0.1
+        radius 0.05
+      }
+    }
+  ]
+  locked TRUE
+  controller "gimbal_test"
+  supervisor TRUE
+}

@@ -15,7 +15,7 @@ client.on_connect = on_connect
 client.connect(BROKER, PORT, keepalive=60)
 client.loop_start()
 
-message = "Arnav"
+message = "jeff"
 while True:
     info = client.publish(TOPIC, message, qos=1)
     info.wait_for_publish()

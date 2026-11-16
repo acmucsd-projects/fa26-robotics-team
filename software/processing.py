@@ -16,7 +16,6 @@ from global_state import Global
 from target_tracker import TargetTracker
 
 import paho.mqtt.client as mqtt
-import time
 
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -30,15 +29,21 @@ ROI_W = 385
 ROI_H = 385
 MAX_MISSES = 5
 
+# Simulation: lock onto the best person detection with no hand gesture needed.
+# Set to False to use the real raised-hand gesture lock.
+SIM_AUTO_LOCK = True
+
 model = RFDETR.from_checkpoint(str(MODEL_PATH))
 
 BROKER = "broker.emqx.io"
 PORT = 1883
 TOPIC = "gimbal/commands"
 
+
 def on_connect(client, userdata, flags, reason_code, properties):
     if reason_code != 0:
         print(f"Failed to connect, reason code: {reason_code}")
+
 
 client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 client.on_connect = on_connect
@@ -46,27 +51,17 @@ client.on_connect = on_connect
 client.connect(BROKER, PORT, keepalive=60)
 client.loop_start()
 
+
 def send(center):
+    # Fire and forget: don't block the processing thread waiting for the broker
+    client.publish(TOPIC, f"{center[0]},{center[1]}", qos=0)
 
-    message = f"{center[0]},{center[1]}"
-
-    info = client.publish(TOPIC, message, qos=1)
-    info.wait_for_publish()
-    print(f"Sent {message}")
-
-    # client.loop_stop()
-    # client.disconnect()
 
 def distance(a, b):
     return math.hypot(a.x - b.x, a.y - b.y)
 
 
 def is_open_raised_hand(landmarks):
-    wrist = landmarks[0]
-
-    # raised = wrist.y < 0.30
-    # upright = landmarks[12].y < wrist.y
-
     fingers = [
         (5, 6, 7, 8),
         (9, 10, 11, 12),
@@ -113,6 +108,7 @@ def download_hand_model():
         str(HAND_MODEL_PATH)
     )
 
+
 def make_roi(box, frame_width, frame_height):
     x1, y1, x2, y2 = box
 
@@ -153,20 +149,22 @@ def threadTarget(global_state):
     last_timestamp = -1
 
     try:
-        download_hand_model()
+        # The hand model is only needed for the real gesture lock
+        if not SIM_AUTO_LOCK:
+            download_hand_model()
 
-        options = vision.HandLandmarkerOptions(
-            base_options=python.BaseOptions(
-                model_asset_path=str(HAND_MODEL_PATH)
-            ),
-            running_mode=vision.RunningMode.VIDEO,
-            num_hands=2,
-            min_hand_detection_confidence=0.5,
-            min_hand_presence_confidence=0.5,
-            min_tracking_confidence=0.5,
-        )
+            options = vision.HandLandmarkerOptions(
+                base_options=python.BaseOptions(
+                    model_asset_path=str(HAND_MODEL_PATH)
+                ),
+                running_mode=vision.RunningMode.VIDEO,
+                num_hands=2,
+                min_hand_detection_confidence=0.5,
+                min_hand_presence_confidence=0.5,
+                min_tracking_confidence=0.5,
+            )
 
-        hands = vision.HandLandmarker.create_from_options(options)
+            hands = vision.HandLandmarker.create_from_options(options)
 
         while global_state.running or not global_state.input_stack.empty():
             try:
@@ -218,7 +216,32 @@ def threadTarget(global_state):
                 detections.xyxy[:, [0, 2]] += offset_x
                 detections.xyxy[:, [1, 3]] += offset_y
 
-            if not acquisition_finished:
+            if not acquisition_finished and SIM_AUTO_LOCK:
+                # Simulation mode: lock the most confident person, no gesture needed
+                if len(detections) > 0:
+                    best = int(detections.confidence.argmax())
+                    x1, y1, x2, y2 = detections.xyxy[best]
+                    fake_hand_point = (
+                        int((x1 + x2) / 2),
+                        int((y1 + y2) / 2),
+                    )
+
+                    center = tracker.lock_target(
+                        detections,
+                        fake_hand_point
+                    )
+
+                    if center is not None:
+                        roi = make_roi(
+                            tracker.target_box,
+                            width,
+                            height
+                        )
+                        acquisition_finished = True
+                        misses = 0
+                        print("[PROCESSING] SIM auto-lock.")
+
+            elif not acquisition_finished:
                 mp_image = mp.Image(
                     image_format=mp.ImageFormat.SRGB,
                     data=frame
@@ -258,7 +281,6 @@ def threadTarget(global_state):
                             height
                         )
 
-
                         acquisition_finished = True
 
                         hands.close()
@@ -285,9 +307,15 @@ def threadTarget(global_state):
                     if misses >= MAX_MISSES:
                         print("[PROCESSING] Target lost.")
 
-                        target_lost = True
                         roi = None
                         tracker.reset()
+                        misses = 0
+
+                        if SIM_AUTO_LOCK:
+                            # Go back to acquiring a new target
+                            acquisition_finished = False
+                        else:
+                            target_lost = True
             else:
                 target_lost = True
 
@@ -295,7 +323,8 @@ def threadTarget(global_state):
             if center is not None:
                 send(center)
 
-            if tracker.target_box is not None:
+            # ---- Drawing ----
+            if tracker.target_box is not None and center is not None:
                 x1, y1, x2, y2 = map(int, tracker.target_box)
 
                 cv2.rectangle(
@@ -308,7 +337,7 @@ def threadTarget(global_state):
 
                 cv2.circle(
                     frame,
-                    center,
+                    (int(center[0]), int(center[1])),
                     7,
                     (255, 0, 0),
                     -1
@@ -348,35 +377,6 @@ def threadTarget(global_state):
                         2
                     )
 
-            if tracker.target_box is not None and center is not None:
-                x1, y1, x2, y2 = map(int, tracker.target_box)
-
-                cv2.rectangle(
-                    frame,
-                    (x1, y1),
-                    (x2, y2),
-                    (255, 255, 0),
-                    3
-                )
-
-                cv2.circle(
-                    frame,
-                    center,
-                    7,
-                    (255, 0, 0),
-                    -1
-                )
-
-                cv2.putText(
-                    frame,
-                    "TARGET LOCKED",
-                    (x1, max(y1 - 30, 20)),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (255, 255, 0),
-                    2
-                )
-
             if roi is not None:
                 rx, ry, rw, rh = roi
 
@@ -388,7 +388,6 @@ def threadTarget(global_state):
                     1
                 )
 
-            
             global_state.output_stack.put((frame_number, frame))
             global_state.data_stack.put((frame_number, detections))
 

@@ -1,0 +1,17 @@
+gimbal_test controller started | python: C:\Users\jeffe\Downloads\robo\venv\Scripts\python.exe
+Devices ready: camera 640x480. Starting sim clock, then loading model...
+Loading RF-DETR from C:\Users\jeffe\Downloads\robo\fa26-robotics-team\software\simulator\controllers\gimbal_test\checkpoint_best_total_v7.pth on cpu (can take 10-60 s)
+optimize_for_inference not available, continuing without it
+Model loaded. torch.cuda.is_available() = False
+--- RF-DETR gimbal test running (threaded inference) ---
+Person lost -> full-frame search + sweep
+Person lost -> full-frame search + sweep
+Person lost -> full-frame search + sweep
+Person lost -> full-frame search + sweep
+Person lost -> full-frame search + sweep
+Person lost -> full-frame search + sweep
+Person lost -> full-frame search + sweep
+Person lost -> full-frame search + sweep
+Person lost -> full-frame search + sweep
+Person lost -> full-frame search + sweep
+Person lost -> full-frame search + sweep
