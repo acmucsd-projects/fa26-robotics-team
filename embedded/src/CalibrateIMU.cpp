@@ -1,4 +1,4 @@
-// Accelerometer calibration. Separate firmware, run once per board:
+// run this:
 //   pio run -e calibrate -t upload -t monitor
 // Point each axis up, then down. Gravity is exactly 1g, so the up/down
 // readings tell us each axis's offset (middle) and scale (stretch).
@@ -7,9 +7,9 @@
 #include "IMU.hpp"
 #include <Arduino.h>
 
-Imu imu(6, 7);
+Imu imu;
 
-// Repeats the prompt until something is typed in the serial monitor.
+// Repeats the prompt until something is typed in the serial monitor
 void waitForEnter(const char *prompt) {
   while (Serial.available())
     Serial.read();
@@ -19,11 +19,11 @@ void waitForEnter(const char *prompt) {
   }
 }
 
-// Waits for the user, then averages the accel while the board sits still.
-Vec3<float> measure(const char *prompt) {
+// Waits for the user, then averages the accel while the board sits still
+Vec3 measure(const char *prompt) {
   waitForEnter(prompt);
   Serial.println("  measuring, keep it still...");
-  Vec3<float> gyro, accel;
+  Vec3 gyro, accel;
   imu.averageRaw(gyro, accel, 400);
   Serial.println("  done");
   return accel;
@@ -38,24 +38,23 @@ void setup() {
     }
   }
 
-  Vec3<float> xu = measure("point +X up, then press enter");
-  Vec3<float> xd = measure("point +X down, then press enter");
-  Vec3<float> yu = measure("point +Y up, then press enter");
-  Vec3<float> yd = measure("point +Y down, then press enter");
-  Vec3<float> zu = measure("point +Z up, then press enter");
-  Vec3<float> zd = measure("point +Z down, then press enter");
+  Vec3 xu = measure("point +X up, then press enter");
+  Vec3 xd = measure("point +X down, then press enter");
+  Vec3 yu = measure("point +Y up, then press enter");
+  Vec3 yd = measure("point +Y down, then press enter");
+  Vec3 zu = measure("point +Z up, then press enter");
+  Vec3 zd = measure("point +Z down, then press enter");
 
   // Each axis reads +1g up and -1g down. Offset = middle of the two,
-  // scale = what turns half the gap into exactly 1g.
-  Vec3<float> up(xu.x, yu.y, zu.z);
-  Vec3<float> down(xd.x, yd.y, zd.z);
-  Vec3<float> offset = (up + down) / 2.0f;
-  Vec3<float> scale = Vec3<float>(ACCEL_LSB_PER_G) / ((up - down) / 2.0f);
+  // scale = what turns half the gap into exactly 1g
+  Vec3 up(xu.x, yu.y, zu.z);
+  Vec3 down(xd.x, yd.y, zd.z);
+  Vec3 offset = (up + down) / 2.0f;
+  Vec3 scale = Vec3(ACCEL_LSB_PER_G) / ((up - down) / 2.0f);
 
   Serial.println("calibration done, paste this into main.cpp:");
-  Serial.printf(
-      "Imu imu(6, 7, 0x68, {%.2f, %.2f, %.2f}, {%.4f, %.4f, %.4f});\n",
-      offset.x, offset.y, offset.z, scale.x, scale.y, scale.z);
+  Serial.printf("Imu imu({%.2f, %.2f, %.2f}, {%.4f, %.4f, %.4f});\n", offset.x,
+                offset.y, offset.z, scale.x, scale.y, scale.z);
 }
 
 void loop() {}
