@@ -1,5 +1,6 @@
 {
   "folders": [
+    { "name": "fa26-robotics-team", "path": "." },
     { "name": "embedded (PlatformIO)", "path": "embedded" }
   ],
   "extensions": {
