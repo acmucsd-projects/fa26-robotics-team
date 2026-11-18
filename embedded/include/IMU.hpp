@@ -22,7 +22,6 @@ struct ImuReading {
 class Imu {
 public:
   // accelOffset (raw counts) and accelScale come from the calibrate firmware in
-  // CalibrateIMU.cpp. (pio run -e calibrate -t upload -t monitor), which prints
   // a ready-made line.
   Imu(uint8_t sda, uint8_t scl, int8_t addr = 0x68, Vec3<float> accelOffset = 0,
       Vec3<float> accelScale = 1);

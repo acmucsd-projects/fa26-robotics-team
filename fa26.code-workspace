@@ -1,0 +1,9 @@
+{
+  "folders": [
+    { "name": "embedded (PlatformIO)", "path": "embedded" }
+  ],
+  "extensions": {
+    "recommendations": ["platformio.platformio-ide"]
+  },
+  "settings": {}
+}
