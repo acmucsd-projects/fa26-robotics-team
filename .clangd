@@ -1,8 +1,9 @@
 CompileFlags:
   CompilationDatabase: embedded/.pio/build
   Add:
-    - -std=gnu++20
-    - -Wno-unknown-warning-option
+    - -ferror-limit=0
+    - --target=xtensa
+    - -D__XTENSA__=1
   Remove:
     - -mlongcalls
     - -mtext-section-literals
