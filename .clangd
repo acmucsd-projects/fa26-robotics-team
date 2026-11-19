@@ -1,5 +1,7 @@
 CompileFlags:
-  CompilationDatabase: embedded/.pio/build/esp32-s3-devkitc-1
+  CompilationDatabase: embedded/.pio/build
+  Add:
+    - -Wno-unknown-warning-option
   Remove:
     - -mlongcalls
     - -mtext-section-literals

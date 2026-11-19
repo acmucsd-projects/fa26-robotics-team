@@ -1,7 +1,5 @@
-#pragma once
+// 3 arithmetic type with regular and scalar operations.
 
-// 3 floats with component-wise math. A plain number turns into (n, n, n), so
-// v * 2 and v / 2 work too.
 #pragma once
 #include <concepts>
 #include <type_traits>

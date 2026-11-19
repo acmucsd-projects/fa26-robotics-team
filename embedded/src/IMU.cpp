@@ -2,6 +2,7 @@
 #include "Array.hpp"
 #include "Vector.hpp"
 #include <Wire.h>
+#include <cstdint>
 
 Imu::Imu(Vec3<> gyroBias, Vec3<> accelBias, Vec3<> accelScale)
     : gyroBias_(gyroBias), accelBias_(accelBias), accelScale_(accelScale) {}
@@ -21,57 +22,54 @@ bool Imu::begin() {
          writeReg(BMI160_GYRO_RANGE_ADDR, BMI160_GYRO_RANGE_2000_DPS);
 }
 
-void Imu::avgRaw(Vec3<> &gyro, Vec3<> &accel, int samples) {
-  // long, because hundreds of 16-bit readings added up overflow an int16.
-  Array<float, 6> sum;
-  Array<int16_t, 6> d;
-  // n only goes up on a good read, so we always average exactly `samples`.
-  for (int n = 0; n < samples; ++n) {
-    if (readRaw(d.data())) {
-      for (int i = 0; i < 6; i++) {
-        sum[i] += static_cast<float>(d[i]);
-      }
-    }
-    // 10 ms = one new reading at 100 Hz.
-    delay(10);
-  }
-  gyro = Vec3<>{sum[0], sum[1], sum[2]} / static_cast<float>(samples);
-  accel = Vec3<>{sum[3], sum[4], sum[5]} / static_cast<float>(samples);
-}
+bool Imu::avgRaw(Vec3<> &avgRawGyro, Vec3<> &avgRawAccel, size_t samples) {
+  Vec3<> sumGyro;
+  Vec3<> sumAccel;
 
-// Reads all 6 values in one go: 12 bytes starting at the gyro data register.
-// Each value is 2 bytes, low byte first. Result: d = gyro x y z, accel x y z.
-bool Imu::readRaw(int16_t *d) {
-  Wire.beginTransmission(IMU_ADDR);
-  Wire.write(BMI160_GYRO_DATA_ADDR);
-  if (Wire.endTransmission() != 0) {
-    return false;
+  // n only goes up on a good read, so we always average exactly `samples`.
+  for (size_t n{}; n < samples; ++n) {
+    Vec3<> gyro;
+    Vec3<> accel;
+    if (!readRaw(gyro, accel)) {
+      return false;
+    }
+    sumGyro += gyro;
+    sumAccel += accel;
   }
-  if (Wire.requestFrom(IMU_ADDR, 12) != 12) {
-    return false;
-  }
-  for (int i = 0; i < 6; i++) {
-    uint8_t lsb = Wire.read();
-    uint8_t msb = Wire.read();
-    d[i] = static_cast<int16_t>(msb << 8 | lsb);
-  }
+  avgRawGyro = sumGyro / static_cast<float>(samples);
+  avgRawAccel = sumAccel / static_cast<float>(samples);
   return true;
 }
 
-bool Imu::read(ImuReading &out) {
-  Array<int16_t, 6> d;
-  if (!readRaw(d.data())) {
+// Reads all 6 values in one go: 12 bytes starting at the gyro data registe
+// Each value is 2 bytes, low byte first. Result: d = gyro x y z, accel x y z.
+bool Imu::readRaw(Vec3<> &rawGyro, Vec3<> &rawAccel) {
+  Array<int16_t, 6> raw;
+  if (bmi160_.getAccelGyroData(raw.data()) != 0) {
+    return false;
+  }
+  rawGyro.x = raw[0];
+  rawGyro.y = raw[1];
+  rawGyro.z = raw[2];
+  rawAccel.x = raw[3];
+  rawAccel.y = raw[4];
+  rawAccel.z = raw[5];
+  return true;
+}
+
+bool Imu::read(Vec3<> &gyro, Vec3<> &accel) {
+  Vec3<> rawGyro;
+  Vec3<> rawAccel;
+  if (!readRaw(rawGyro, rawAccel)) {
     return false;
   }
 
-  Vec3<> rawGyro{static_cast<float>(d[0]), static_cast<float>(d[1]), static_cast<float>(d[2])};
-  Vec3<> rawAccel{static_cast<float>(d[3]), static_cast<float>(d[4]), static_cast<float>(d[5])};
+  // Accel: remove offset, fix sensitivity, then ticks -> m/s^2.
+  accel = (rawAccel - accelBias_) * accelScale_ * (9.80665F / ACCEL_LSB_PER_G);
 
-  // Accel: remove offset, fix sensitivity, then counts -> m/s^2.
-  out.accel = (rawAccel - accelBias_) * accelScale_ * (9.80665F / ACCEL_LSB_PER_G);
+  // Gyro: remove bias, then ticks -> deg/s.
+  gyro = (rawGyro - gyroBias_) / GYRO_LSB_PER_DPS;
 
-  // Gyro: remove bias, then counts -> deg/s.
-  out.gyro = (rawGyro - gyroBias_) / GYRO_LSB_PER_DPS;
   return true;
 }
 
@@ -81,22 +79,4 @@ bool Imu::writeReg(uint8_t reg, uint8_t value) {
   Wire.write(reg);
   Wire.write(value);
   return Wire.endTransmission() == 0;
-}
-
-// Points the servos at the board's tilt, from accel only (no filter).
-void movePos(int id, int position_number);
-bool imuDriveMotors(Imu &imu) {
-  ImuReading r;
-  if (!imu.read(r)) {
-    return false;
-  }
-
-  float pitch{atan2f(-r.accel.x, sqrt((r.accel.y * r.accel.y) + (r.accel.z * r.accel.z))) * 180.0 /
-              std::numbers::pi};
-  float roll{atan2f(r.accel.y, r.accel.z) * 180.0 / std::numbers::pi};
-
-  // 4096 servo steps per turn, 2048 = center, clamped to +-90 degrees.
-  movePos(1, constrain(2048 + (pitch * 4096.0 / 360.0), 1024, 3072));
-  movePos(2, constrain(2048 + (roll * 4096.0 / 360.0), 1024, 3072));
-  return true;
 }
