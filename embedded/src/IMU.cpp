@@ -43,19 +43,14 @@ bool Imu::avgRaw(Vec3f &avgRawGyro, Vec3f &avgRawAccel, size_t samples) {
   return true;
 }
 
-// Reads all 6 values in one go: 12 bytes starting at the gyro data registe
-// Each value is 2 bytes, low byte first. Result: d = gyro x y z, accel x y z.
+// Each value is 2 bytes, low byte first. Result: gyro x y z, accel x y z (ticks)
 bool Imu::readRaw(Vec3f &rawGyro, Vec3f &rawAccel) {
   Array<int16_t, 6> raw;
   if (bmi160_.getAccelGyroData(raw.data()) != 0) {
     return false;
   }
-  rawGyro.x() = raw[0];
-  rawGyro.y() = raw[1];
-  rawGyro.z() = raw[2];
-  rawAccel.x() = raw[3];
-  rawAccel.y() = raw[4];
-  rawAccel.z() = raw[5];
+  rawGyro = orientation_ * Vec3f{raw[0], raw[1], raw[2]};
+  rawAccel = orientation_ * Vec3f{raw[3], raw[4], raw[5]};
   return true;
 }
 

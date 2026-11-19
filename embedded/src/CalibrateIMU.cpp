@@ -73,7 +73,7 @@ void setup() {
   Vec3f positives{samples[0][0].x(), samples[0][1].y(), samples[0][2].z()};
   Vec3f negatives{samples[1][0].x(), samples[1][1].y(), samples[1][2].z()};
   Vec3f accelBias{(positives + negatives) / 2.0F};
-  Vec3f accelScale{Vec3f{ACCEL_LSB_PER_G * 2.0F} / (positives - negatives)};
+  Vec3f accelScale{ACCEL_LSB_PER_G * 2.0F / (positives - negatives)};
 
   Serial.println("Calibration done, paste this into Imu's constructor");
   Serial.printf("{%.4f, %.4f, %.4f}, {%.4f, %.4f, %.4f}, {%.4f, %.4f, %.4f}\n", gyroBias.x(),

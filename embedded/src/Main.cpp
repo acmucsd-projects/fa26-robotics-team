@@ -13,12 +13,11 @@
 //   pan    angle around Z (gyro z only). Turn the board flat, it follows,
 //          but slowly drifts since nothing corrects it.
 //
-#include "ComplementaryFilter.hpp"
 #include "IMU.hpp"
+#include "Vector.hpp"
 #include <Arduino.h>
 
-Imu imu({}, {31.57, -498.17, 91.18}, {1.0106, 1.0074, 0.9943});
-ComplementaryFilter filter;
+Imu imu({4.5263, 5.8273, -3.0253}, {-7.7576, -510.4148, 91.7549}, {1.0080, -1.0080, 0.9991});
 
 void setup() {
   Serial.begin(115200);
@@ -33,30 +32,21 @@ void setup() {
   Serial.println("BMI160 ready");
 }
 
+uint32_t last{};
 void loop() {
-  ImuReading r;
-  if (!imu.read(r)) {
+  Vec3f gyro;
+  Vec3f accel;
+  if (!imu.read(gyro, accel)) {
     Serial.println("read failed");
     // Wait for the next IMU sample (100 Hz) so a dead IMU doesn't flood serial.
     delay(10);
     return;
   }
 
-  // dt = seconds since the last loop. The filter needs it to turn deg/s into deg.
-  static uint32_t last = micros();
-  uint32_t now = micros();
-  filter.update(r, (now - last) / 1e6f);
-  last = now;
-
-  // Print at most every 10 ms so serial doesn't slow the loop down.
-  static unsigned long lastPrint = 0;
-  if (millis() - lastPrint >= 10) {
-    lastPrint = millis();
-    Serial.printf("accel (m/s^2): %7.2f %7.2f %7.2f  |a| %6.2f   gyro (deg/s): "
-                  "%8.2f %8.2f %8.2f   tilt %7.2f  pan %7.2f\n",
-                  r.accel.x(), r.accel.y(), r.accel.z(),
-                  sqrtf(r.accel.x() * r.accel.x() + r.accel.y() * r.accel.y() +
-                        r.accel.z() * r.accel.z()),
-                  r.gyro.x(), r.gyro.y(), r.gyro.z(), filter.tilt, filter.pan);
+  if (millis() - last >= 10) {
+    last = millis();
+    Serial.printf("accel (m/s^2): %.4f %.4f %.4f. gyro (deg/s): %.4f %.4f %.4f\n",
+                  accel.x(), accel.y(), accel.z(),
+                  gyro.x(), gyro.y(), gyro.z());
   }
 }

@@ -5,14 +5,15 @@
 #include <cmath>
 #include <concepts>
 #include <cstddef>
+#include <numbers>
 #include <type_traits>
 
-// Matrix with fixed rows and columns
+// Matrix with fixed rows and columns, with implementations stolen from Eigen
 template <typename T, size_t R, size_t C>
   requires std::is_arithmetic_v<T> && (R > 0) && (C > 0)
 struct Mat {
   // Row-major storage: rows[r][c]
-  Array<Vec<T, C>, R> rows{};
+  Array<Vec<T, C>, R> rows;
 
   // Default constructs to Identity when square (R == C), Zero otherwise
   constexpr Mat() noexcept {
@@ -65,9 +66,10 @@ struct Mat {
     return Mat{};
   }
 
-  [[nodiscard]] static constexpr Mat rotX(T rad) noexcept
-    requires(R == 3 && C == 3) && std::floating_point<T>
+  [[nodiscard]] static constexpr Mat rotX(T deg) noexcept
+    requires(R == 3 && C == 3) && std::floating_point<T> && std::numbers::pi_v<T>
   {
+    T rad{deg * std::numbers::pi_v<T> / T{180}};
     const T c{std::cos(rad)};
     const T s{std::sin(rad)};
     return Mat{
@@ -77,9 +79,10 @@ struct Mat {
     };
   }
 
-  [[nodiscard]] static constexpr Mat rotY(T rad) noexcept
-    requires(R == 3 && C == 3) && std::floating_point<T>
+  [[nodiscard]] static constexpr Mat rotY(T deg) noexcept
+    requires(R == 3 && C == 3) && std::floating_point<T> && std::numbers::pi_v<T>
   {
+    T rad{deg * std::numbers::pi_v<T> / T{180}};
     const T c{std::cos(rad)};
     const T s{std::sin(rad)};
     return Mat{
@@ -89,9 +92,10 @@ struct Mat {
     };
   }
 
-  [[nodiscard]] static constexpr Mat rotZ(T rad) noexcept
-    requires(R == 3 && C == 3) && std::floating_point<T>
+  [[nodiscard]] static constexpr Mat rotZ(T deg) noexcept
+    requires(R == 3 && C == 3) && std::floating_point<T> && std::numbers::pi_v<T>
   {
+    T rad{deg * std::numbers::pi_v<T> / T{180}};
     const T c{std::cos(rad)};
     const T s{std::sin(rad)};
     return Mat{

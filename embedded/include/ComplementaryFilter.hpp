@@ -21,7 +21,7 @@ class ComplementaryFilter {
   void update(Vec3f gyro, Vec3f accel, float dt) {
     // Tilt seen by gravity alone. 57.29578 turns radians into degrees.
     float accelTilt{atan2f(-accel.x(), sqrtf((accel.y() * accel.y()) + (accel.z() * accel.z()))) *
-                    (180.0F / static_cast<float>(std::numbers::pi))};
+                    (180.0F * std::numbers::inv_pi_v<float>)};
 
     // No history yet, so start from the accel angle.
     if (!started_) {
