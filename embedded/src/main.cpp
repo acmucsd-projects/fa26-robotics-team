@@ -16,6 +16,7 @@
 #include "ComplementaryFilter.hpp"
 #include "IMU.hpp"
 #include <Arduino.h>
+#include "MQTT.cpp"
 
 Imu imu({31.57, -498.17, 91.18}, {1.0106, 1.0074, 0.9943});
 ComplementaryFilter filter;
@@ -24,6 +25,8 @@ void setup() {
   Serial.begin(115200);
   while (!Serial && millis() < 2000) {
   }
+
+  setup_wifi();
 
   if (!imu.begin()) {
     Serial.println("BMI160 init failed");
@@ -36,6 +39,10 @@ void setup() {
 }
 
 void loop() {
+  if (WiFi.status() != WL_CONNECTED) {
+    setup_wifi();
+  }
+
   ImuReading r;
   if (!imu.read(r)) {
     Serial.println("read failed");
@@ -59,6 +66,6 @@ void loop() {
                   r.accel.x, r.accel.y, r.accel.z,
                   sqrtf(r.accel.x * r.accel.x + r.accel.y * r.accel.y +
                         r.accel.z * r.accel.z),
-                  r.gyro.x, r.gyro.y, r.gyro.z, filter.tilt, filter.pan);
+                  r.gyro.x, r.gyro.y, r.gyro.z, filter.tilt, filter.pan); // gyro x y z
   }
 }
