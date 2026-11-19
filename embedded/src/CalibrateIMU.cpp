@@ -15,7 +15,8 @@ void waitForEnter(const char *prompt) {
     Serial.read();
   while (!Serial.available()) {
     Serial.println(prompt);
-    delay(2000);
+    delay(2000); // During calibration, it stops "point _ up, then press enter"
+                 // printing rapidly thousands of times
   }
 }
 
@@ -34,7 +35,8 @@ void setup() {
   if (!imu.begin()) {
     while (true) {
       Serial.println("BMI160 init failed");
-      delay(1000);
+      delay(1000); // prevents "BMI160 init failed" from printing rapidly
+                   // thousands of times
     }
   }
 
