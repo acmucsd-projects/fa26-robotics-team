@@ -12,9 +12,12 @@ SMS_STS st;
 const int SPEED = 4000;
 int MIN1 = 500;
 int MAX1 = 500;
+int MIN2 = 500;
+int MAX2 = 500;
 const int SERVO1 = 1;
 const int SERVO2 = 2;
 const int SERVO_INVCENTER = 2438;
+const int MAX_CURR = 8;
 
 void MovePos(int id, int position) {
 	st.WritePosEx(id, position, 2000, 50);
@@ -26,7 +29,7 @@ void setup() {
 
 	Serial1.begin(1000000, SERIAL_8N1, SERVO_RX, SERVO_TX);
 	st.pSerial = &Serial1;
-	// st.WritePosEx(SERVO1, SERVO_CENTER, 2000, 50);
+	MovePos(SERVO1, 2422);
 	MovePos(SERVO2, 2438);
 	delay(1500);
 	Serial.println("Scanning bus");
@@ -42,7 +45,21 @@ void setup() {
 
 	delay(500);
 
-	while (st.ReadCurrent(SERVO2) < 7) {
+	while (st.ReadCurrent(SERVO1) < MAX_CURR && st.ReadCurrent(SERVO1) != -1) {
+		MovePos(SERVO1, currPos-10);
+		currPos -= 10;
+		Serial.print("servo1 ");
+		Serial.print(currPos);
+		Serial.print(" ");
+		Serial.println(st.ReadCurrent(SERVO1));
+		delay(20);
+	}
+
+	MIN1 = currPos + 10;
+	MovePos(SERVO1, SERVO_INVCENTER);
+	currPos = SERVO_INVCENTER;
+
+	while (st.ReadCurrent(SERVO2) < MAX_CURR && st.ReadCurrent(SERVO1) != -1) {
 		MovePos(SERVO2, currPos-10);
 		currPos -= 10;
 		Serial.print("servo2 ");
@@ -52,25 +69,45 @@ void setup() {
 		delay(20);
 	}
 
-	MIN1 = currPos + 10;
+	MIN2 = currPos + 10;
 	currPos = SERVO_INVCENTER;
 
-	MovePos(SERVO2, 2438);
+	MovePos(SERVO2, SERVO_INVCENTER);
 	delay(1000);
 
-	while (st.ReadCurrent(SERVO2) < 7) {
+	while (st.ReadCurrent(SERVO1) < MAX_CURR && st.ReadCurrent(SERVO1) != -1) {
+		MovePos(SERVO1, currPos+10);
+		currPos += 10;
+		Serial.print("servo1 ");
+		Serial.print(currPos);
+		Serial.print(" ");
+		Serial.println(st.ReadCurrent(SERVO1));
+		delay(20);
+	}
+
+	MAX1 = currPos - 10;
+	MovePos(SERVO1, SERVO_INVCENTER);
+	currPos = SERVO_INVCENTER;
+	
+
+	while (st.ReadCurrent(SERVO2) < MAX_CURR && st.ReadCurrent(SERVO1) != -1) {
 		MovePos(SERVO2, currPos+10);
 		currPos += 10;
 		Serial.print("servo2 LOOP 2 ");
 		Serial.println(st.ReadCurrent(SERVO2));
 		delay(20);
 	}
-	MAX1 = currPos - 10;
 
-	MovePos(SERVO2, (MAX1+MIN1)/2);
+	MAX2 = currPos - 10;
+	currPos = SERVO_INVCENTER;
+
+
+	MovePos(SERVO2, (MAX2+MIN2)/2);
 
 	Serial.println(MIN1);
 	Serial.println(MAX1);
+	Serial.println(MIN2);
+	Serial.println(MAX2);
 
 }
 
