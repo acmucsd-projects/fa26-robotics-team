@@ -1,6 +1,7 @@
 CompileFlags:
   CompilationDatabase: embedded/.pio/build
   Add:
+    - -std=gnu++20
     - -Wno-unknown-warning-option
   Remove:
     - -mlongcalls

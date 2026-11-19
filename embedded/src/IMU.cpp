@@ -1,11 +1,13 @@
 #include "IMU.hpp"
 #include "Array.hpp"
+#include "Matrix.hpp"
 #include "Vector.hpp"
 #include <Wire.h>
 #include <cstdint>
 
-Imu::Imu(Vec3<> gyroBias, Vec3<> accelBias, Vec3<> accelScale)
-    : gyroBias_(gyroBias), accelBias_(accelBias), accelScale_(accelScale) {}
+Imu::Imu(Vec3<> gyroBias, Vec3<> accelBias, Vec3<> accelScale, Mat3<> orientation)
+    : gyroBias_(gyroBias), accelBias_(accelBias), accelScale_(accelScale),
+      orientation_(orientation) {}
 
 bool Imu::begin() {
   Wire.end();

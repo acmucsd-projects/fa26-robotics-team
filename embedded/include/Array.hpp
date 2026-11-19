@@ -20,23 +20,39 @@ public:
 
   [[nodiscard]] constexpr bool empty() const noexcept { return N == 0; }
 
-  T &operator[](size_t idx) noexcept {
+  constexpr T &operator[](size_t idx) noexcept {
     assert(idx < N);
     return storage_[idx];
   }
 
-  const T &operator[](size_t idx) const noexcept {
+  constexpr const T &operator[](size_t idx) const noexcept {
     assert(idx < N);
     return storage_[idx];
   }
 
-  constexpr T &front() noexcept { return storage_[0]; }
+  constexpr T &front() noexcept
+    requires(N > 0)
+  {
+    return storage_[0];
+  }
 
-  constexpr const T &front() const noexcept { return storage_[0]; }
+  constexpr const T &front() const noexcept
+    requires(N > 0)
+  {
+    return storage_[0];
+  }
 
-  constexpr T &back() noexcept { return storage_[N - 1]; }
+  constexpr T &back() noexcept
+    requires(N > 0)
+  {
+    return storage_[N - 1];
+  }
 
-  constexpr const T &back() const noexcept { return storage_[N - 1]; }
+  constexpr const T &back() const noexcept
+    requires(N > 0)
+  {
+    return storage_[N - 1];
+  }
 
   constexpr T *data() noexcept { return storage_; }
 

@@ -2,6 +2,7 @@
 // Usage: Imu imu; imu.begin(); imu.calibrateGyro(); imu.read(r);
 
 #pragma once
+#include "Matrix.hpp"
 #include "Vector.hpp"
 #include <Arduino.h>
 #include <DFRobot_BMI160.h>
@@ -24,14 +25,16 @@ class Imu {
   DFRobot_BMI160 bmi160_;
 
   // All three are in raw ticks.
-  Vec3<> gyroBias_;
-  Vec3<> accelBias_;
-  Vec3<> accelScale_;
+  const Vec3<> gyroBias_;
+  const Vec3<> accelBias_;
+  const Vec3<> accelScale_;
+  const Mat3<> orientation_;
 
 public:
   // Gyro bias, acceleration bias, and acceleration scale in ticks from CalibrateIMU.cpp.
   // pio run -e calibrate -t upload -t monitor prints a ready-made line.
-  Imu(Vec3<> gyroBias = 0.0F, Vec3<> accelBias = 0.0F, Vec3<> accelScale = 1.0F);
+  Imu(Vec3<> gyroBias = 0.0F, Vec3<> accelBias = 0.0F, Vec3<> accelScale = 1.0F,
+      Mat3<> orientation = Mat3<>::identity());
 
   // Starts I2C and sets accel to +-4g @ 100 Hz, gyro to +-2000 deg/s @ 100 Hz.
   bool begin();
