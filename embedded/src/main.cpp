@@ -27,6 +27,8 @@ void setup() {
   }
 
   setup_wifi();
+  client.setServer(mqtt_server, mqtt_port);
+  client.setCallback(callback);
 
   if (!imu.begin()) {
     Serial.println("BMI160 init failed");
@@ -42,6 +44,11 @@ void loop() {
   if (WiFi.status() != WL_CONNECTED) {
     setup_wifi();
   }
+  if (!client.connected()) {
+    reconnect();
+  }
+  client.loop();
+
 
   ImuReading r;
   if (!imu.read(r)) {
