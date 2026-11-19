@@ -17,7 +17,7 @@
 #include "IMU.hpp"
 #include <Arduino.h>
 
-Imu imu({31.57, -498.17, 91.18}, {1.0106, 1.0074, 0.9943});
+Imu imu({}, {31.57, -498.17, 91.18}, {1.0106, 1.0074, 0.9943});
 ComplementaryFilter filter;
 
 void setup() {
@@ -30,8 +30,6 @@ void setup() {
     while (true) {
     }
   }
-  Serial.println("Calibrating gyro, keep the sensor still...");
-  imu.calibrateGyro();
   Serial.println("BMI160 ready");
 }
 
