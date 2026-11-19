@@ -24,7 +24,7 @@ void waitForEnter(const char *prompt) {
 }
 
 // Waits for the user, hold still, then averages the accel while the board sits still
-bool measure(const char *prompt, Vec3<> &gyro, Vec3<> &accel) {
+bool measure(const char *prompt, Vec3f &gyro, Vec3f &accel) {
   waitForEnter(prompt);
   Serial.println("Measuring, hold still...");
   if (!imu.avgRaw(gyro, accel)) {
@@ -36,7 +36,7 @@ bool measure(const char *prompt, Vec3<> &gyro, Vec3<> &accel) {
 
 struct AxisStep {
   const char *prompt;
-  Vec3<> *out;
+  Vec3f *out;
 };
 
 void setup() {
@@ -48,11 +48,11 @@ void setup() {
     }
   }
 
-  Vec3<> gyroBias;
-  Vec3<> gyro;
+  Vec3f gyroBias;
+  Vec3f gyro;
   const Array<char, 3> axes{'X', 'Y', 'Z'};
   const Array<char, 2> signs{'+', '-'};
-  Array<Array<Vec3<>, 3>, 2> samples{}; // [0 = +, 1 = -][0 = X, 1 = Y, 2 = Z]
+  Array<Array<Vec3f, 3>, 2> samples{}; // [0 = +, 1 = -][0 = X, 1 = Y, 2 = Z]
   Array<char, 43> prompt{};
 
   for (size_t axis{}; axis < axes.size(); ++axis) {
@@ -70,15 +70,15 @@ void setup() {
 
   // Each axis reads +1g up and -1g down. Bias = middle of the two,
   // scale = what turns half the gap into exactly 1g
-  Vec3<> positives{samples[0][0].x, samples[0][1].y, samples[0][2].z};
-  Vec3<> negatives{samples[1][0].x, samples[1][1].y, samples[1][2].z};
-  Vec3<> accelBias{(positives + negatives) / 2.0F};
-  Vec3<> accelScale{Vec3<>{ACCEL_LSB_PER_G * 2.0F} / (positives - negatives)};
+  Vec3f positives{samples[0][0].x(), samples[0][1].y(), samples[0][2].z()};
+  Vec3f negatives{samples[1][0].x(), samples[1][1].y(), samples[1][2].z()};
+  Vec3f accelBias{(positives + negatives) / 2.0F};
+  Vec3f accelScale{Vec3f{ACCEL_LSB_PER_G * 2.0F} / (positives - negatives)};
 
   Serial.println("Calibration done, paste this into Imu's constructor");
-  Serial.printf("{%.4f, %.4f, %.4f}, {%.4f, %.4f, %.4f}, {%.4f, %.4f, %.4f}\n", gyroBias.x,
-                gyroBias.y, gyroBias.z, accelBias.x, accelBias.y, accelBias.z, accelScale.x,
-                accelScale.y, accelScale.z);
+  Serial.printf("{%.4f, %.4f, %.4f}, {%.4f, %.4f, %.4f}, {%.4f, %.4f, %.4f}\n", gyroBias.x(),
+                gyroBias.y(), gyroBias.z(), accelBias.x(), accelBias.y(), accelBias.z(),
+                accelScale.x(), accelScale.y(), accelScale.z());
 }
 
 void loop() {}

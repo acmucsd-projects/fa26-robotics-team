@@ -54,9 +54,9 @@ void loop() {
     lastPrint = millis();
     Serial.printf("accel (m/s^2): %7.2f %7.2f %7.2f  |a| %6.2f   gyro (deg/s): "
                   "%8.2f %8.2f %8.2f   tilt %7.2f  pan %7.2f\n",
-                  r.accel.x, r.accel.y, r.accel.z,
-                  sqrtf(r.accel.x * r.accel.x + r.accel.y * r.accel.y +
-                        r.accel.z * r.accel.z),
-                  r.gyro.x, r.gyro.y, r.gyro.z, filter.tilt, filter.pan);
+                  r.accel.x(), r.accel.y(), r.accel.z(),
+                  sqrtf(r.accel.x() * r.accel.x() + r.accel.y() * r.accel.y() +
+                        r.accel.z() * r.accel.z()),
+                  r.gyro.x(), r.gyro.y(), r.gyro.z(), filter.tilt, filter.pan);
   }
 }

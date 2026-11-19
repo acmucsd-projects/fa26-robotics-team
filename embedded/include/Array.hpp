@@ -1,5 +1,5 @@
 #pragma once
-#include <assert.h>
+#include <cassert>
 #include <cstddef>
 
 // Fixed-size array
@@ -21,12 +21,12 @@ public:
   [[nodiscard]] constexpr bool empty() const noexcept { return N == 0; }
 
   constexpr T &operator[](size_t idx) noexcept {
-    assert(idx < N);
+    assert(idx < N && "Index access out of range.");
     return storage_[idx];
   }
 
   constexpr const T &operator[](size_t idx) const noexcept {
-    assert(idx < N);
+    assert(idx < N && "Index access out of range.");
     return storage_[idx];
   }
 

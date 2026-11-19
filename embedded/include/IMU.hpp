@@ -25,28 +25,28 @@ class Imu {
   DFRobot_BMI160 bmi160_;
 
   // All three are in raw ticks.
-  const Vec3<> gyroBias_;
-  const Vec3<> accelBias_;
-  const Vec3<> accelScale_;
-  const Mat3<> orientation_;
+  const Vec3f gyroBias_;
+  const Vec3f accelBias_;
+  const Vec3f accelScale_;
+  const Mat3f orientation_;
 
 public:
   // Gyro bias, acceleration bias, and acceleration scale in ticks from CalibrateIMU.cpp.
   // pio run -e calibrate -t upload -t monitor prints a ready-made line.
-  Imu(Vec3<> gyroBias = 0.0F, Vec3<> accelBias = 0.0F, Vec3<> accelScale = 1.0F,
-      Mat3<> orientation = Mat3<>::identity());
+  Imu(Vec3f gyroBias = Vec3f{0.0F}, Vec3f accelBias = Vec3f{0.0F}, Vec3f accelScale = Vec3f{1.0F},
+      Mat3f orientation = Mat3f::identity());
 
   // Starts I2C and sets accel to +-4g @ 100 Hz, gyro to +-2000 deg/s @ 100 Hz.
   bool begin();
 
   // Read raw ticks.
-  bool readRaw(Vec3<> &rawGyro, Vec3<> &rawAccel);
+  bool readRaw(Vec3f &rawGyro, Vec3f &rawAccel);
 
   // Averages raw ticks over many samples.
-  bool avgRaw(Vec3<> &avgRawGyro, Vec3<> &avgRawAccel, size_t samples = 1000);
+  bool avgRaw(Vec3f &avgRawGyro, Vec3f &avgRawAccel, size_t samples = 1000);
 
   // Read calibrated, unit-converted data.
   // accel x, y, z in m/s^2.
   // gyro x (roll), y (pitch), z (yaw) in deg/s.
-  bool read(Vec3<> &gyro, Vec3<> &accel);
+  bool read(Vec3f &gyro, Vec3f &accel);
 };

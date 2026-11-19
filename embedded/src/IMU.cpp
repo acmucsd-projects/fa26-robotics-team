@@ -5,7 +5,7 @@
 #include <Wire.h>
 #include <cstdint>
 
-Imu::Imu(Vec3<> gyroBias, Vec3<> accelBias, Vec3<> accelScale, Mat3<> orientation)
+Imu::Imu(Vec3f gyroBias, Vec3f accelBias, Vec3f accelScale, Mat3f orientation)
     : gyroBias_(gyroBias), accelBias_(accelBias), accelScale_(accelScale),
       orientation_(orientation) {}
 
@@ -24,14 +24,14 @@ bool Imu::begin() {
          writeReg(BMI160_GYRO_RANGE_ADDR, BMI160_GYRO_RANGE_2000_DPS);
 }
 
-bool Imu::avgRaw(Vec3<> &avgRawGyro, Vec3<> &avgRawAccel, size_t samples) {
-  Vec3<> sumGyro;
-  Vec3<> sumAccel;
+bool Imu::avgRaw(Vec3f &avgRawGyro, Vec3f &avgRawAccel, size_t samples) {
+  Vec3f sumGyro;
+  Vec3f sumAccel;
 
   // n only goes up on a good read, so we always average exactly `samples`.
   for (size_t n{}; n < samples; ++n) {
-    Vec3<> gyro;
-    Vec3<> accel;
+    Vec3f gyro;
+    Vec3f accel;
     if (!readRaw(gyro, accel)) {
       return false;
     }
@@ -45,23 +45,23 @@ bool Imu::avgRaw(Vec3<> &avgRawGyro, Vec3<> &avgRawAccel, size_t samples) {
 
 // Reads all 6 values in one go: 12 bytes starting at the gyro data registe
 // Each value is 2 bytes, low byte first. Result: d = gyro x y z, accel x y z.
-bool Imu::readRaw(Vec3<> &rawGyro, Vec3<> &rawAccel) {
+bool Imu::readRaw(Vec3f &rawGyro, Vec3f &rawAccel) {
   Array<int16_t, 6> raw;
   if (bmi160_.getAccelGyroData(raw.data()) != 0) {
     return false;
   }
-  rawGyro.x = raw[0];
-  rawGyro.y = raw[1];
-  rawGyro.z = raw[2];
-  rawAccel.x = raw[3];
-  rawAccel.y = raw[4];
-  rawAccel.z = raw[5];
+  rawGyro.x() = raw[0];
+  rawGyro.y() = raw[1];
+  rawGyro.z() = raw[2];
+  rawAccel.x() = raw[3];
+  rawAccel.y() = raw[4];
+  rawAccel.z() = raw[5];
   return true;
 }
 
-bool Imu::read(Vec3<> &gyro, Vec3<> &accel) {
-  Vec3<> rawGyro;
-  Vec3<> rawAccel;
+bool Imu::read(Vec3f &gyro, Vec3f &accel) {
+  Vec3f rawGyro;
+  Vec3f rawAccel;
   if (!readRaw(rawGyro, rawAccel)) {
     return false;
   }
