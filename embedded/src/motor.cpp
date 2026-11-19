@@ -1,4 +1,3 @@
-
 #include <Arduino.h>
 #include <Wire.h>
 #include "SCServo.h"
@@ -41,67 +40,90 @@ void setup() {
 		}
 	}
 
-	int currPos = st.ReadPos(SERVO2);
+	int currPos1 = SERVO_INVCENTER;
+	int currPos2 = SERVO_INVCENTER;
+	bool moving1 = true;
+	bool moving2 = true;
 
 	delay(500);
 
-	while (st.ReadCurrent(SERVO1) < MAX_CURR && st.ReadCurrent(SERVO1) != -1) {
-		MovePos(SERVO1, currPos-10);
-		currPos -= 10;
-		Serial.print("servo1 ");
-		Serial.print(currPos);
-		Serial.print(" ");
-		Serial.println(st.ReadCurrent(SERVO1));
+	// ---- find MIN1 / MIN2 (both servos stepping together) ----
+	while (moving1 || moving2) {
+		if (moving1) {
+			if (st.ReadCurrent(SERVO1) < MAX_CURR && st.ReadCurrent(SERVO1) != -1) {
+				MovePos(SERVO1, currPos1-10);
+				currPos1 -= 10;
+				Serial.print("servo1 ");
+				Serial.print(currPos1);
+				Serial.print(" ");
+				Serial.println(st.ReadCurrent(SERVO1));
+			} else {
+				MIN1 = currPos1 + 10;
+				MovePos(SERVO1, SERVO_INVCENTER);
+				currPos1 = SERVO_INVCENTER;
+				moving1 = false;
+			}
+		}
+
+		if (moving2) {
+			if (st.ReadCurrent(SERVO2) < MAX_CURR && st.ReadCurrent(SERVO2) != -1) {
+				MovePos(SERVO2, currPos2-10);
+				currPos2 -= 10;
+				Serial.print("servo2 ");
+				Serial.print(currPos2);
+				Serial.print(" ");
+				Serial.println(st.ReadCurrent(SERVO2));
+			} else {
+				MIN2 = currPos2 + 10;
+				currPos2 = SERVO_INVCENTER;
+				moving2 = false;
+			}
+		}
+
 		delay(20);
 	}
-
-	MIN1 = currPos + 10;
-	MovePos(SERVO1, SERVO_INVCENTER);
-	currPos = SERVO_INVCENTER;
-
-	while (st.ReadCurrent(SERVO2) < MAX_CURR && st.ReadCurrent(SERVO1) != -1) {
-		MovePos(SERVO2, currPos-10);
-		currPos -= 10;
-		Serial.print("servo2 ");
-		Serial.print(currPos);
-		Serial.print(" ");
-		Serial.println(st.ReadCurrent(SERVO2));
-		delay(20);
-	}
-
-	MIN2 = currPos + 10;
-	currPos = SERVO_INVCENTER;
 
 	MovePos(SERVO2, SERVO_INVCENTER);
 	delay(1000);
 
-	while (st.ReadCurrent(SERVO1) < MAX_CURR && st.ReadCurrent(SERVO1) != -1) {
-		MovePos(SERVO1, currPos+10);
-		currPos += 10;
-		Serial.print("servo1 ");
-		Serial.print(currPos);
-		Serial.print(" ");
-		Serial.println(st.ReadCurrent(SERVO1));
+	moving1 = true;
+	moving2 = true;
+
+	// ---- find MAX1 / MAX2 (both servos stepping together) ----
+	while (moving1 || moving2) {
+		if (moving1) {
+			if (st.ReadCurrent(SERVO1) < MAX_CURR && st.ReadCurrent(SERVO1) != -1) {
+				MovePos(SERVO1, currPos1+10);
+				currPos1 += 10;
+				Serial.print("servo1 ");
+				Serial.print(currPos1);
+				Serial.print(" ");
+				Serial.println(st.ReadCurrent(SERVO1));
+			} else {
+				MAX1 = currPos1 - 10;
+				MovePos(SERVO1, SERVO_INVCENTER);
+				currPos1 = SERVO_INVCENTER;
+				moving1 = false;
+			}
+		}
+
+		if (moving2) {
+			if (st.ReadCurrent(SERVO2) < MAX_CURR && st.ReadCurrent(SERVO2) != -1) {
+				MovePos(SERVO2, currPos2+10);
+				currPos2 += 10;
+				Serial.print("servo2 LOOP 2 ");
+				Serial.println(st.ReadCurrent(SERVO2));
+			} else {
+				MAX2 = currPos2 - 10;
+				currPos2 = SERVO_INVCENTER;
+				moving2 = false;
+			}
+		}
+
 		delay(20);
 	}
 
-	MAX1 = currPos - 10;
-	MovePos(SERVO1, SERVO_INVCENTER);
-	currPos = SERVO_INVCENTER;
-	
-
-	while (st.ReadCurrent(SERVO2) < MAX_CURR && st.ReadCurrent(SERVO1) != -1) {
-		MovePos(SERVO2, currPos+10);
-		currPos += 10;
-		Serial.print("servo2 LOOP 2 ");
-		Serial.println(st.ReadCurrent(SERVO2));
-		delay(20);
-	}
-
-	MAX2 = currPos - 10;
-	currPos = SERVO_INVCENTER;
-
-
+	MovePos(SERVO1, (MAX1+MIN1)/2);
 	MovePos(SERVO2, (MAX2+MIN2)/2);
 
 	Serial.println(MIN1);
@@ -114,4 +136,3 @@ void setup() {
 void loop() {
 	
 }
-
