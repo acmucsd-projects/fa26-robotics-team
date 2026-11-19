@@ -5,7 +5,7 @@
 // Fixed-size array
 template <typename T, size_t N> class Array {
   // NOLINTNEXTLINE
-  T storage_[N];
+  T storage_[N]{};
 
 public:
   constexpr Array() noexcept

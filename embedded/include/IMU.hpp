@@ -9,6 +9,9 @@
 #include <cstdint>
 
 // I2C pins and address of the BMI160
+// CS --> 3V3
+// SA0 --> GND
+// VIN -->
 constexpr uint8_t IMU_SDA = 6;
 constexpr uint8_t IMU_SCL = 7;
 constexpr uint8_t IMU_ADDR = 0x68;
@@ -43,7 +46,7 @@ public:
   bool readRaw(Vec3f &rawGyro, Vec3f &rawAccel);
 
   // Averages raw ticks over many samples.
-  bool avgRaw(Vec3f &avgRawGyro, Vec3f &avgRawAccel, size_t samples = 1000);
+  bool avgRaw(Vec3f &avgRawGyro, Vec3f &avgRawAccel, size_t samples = 500);
 
   // Read calibrated, unit-converted data.
   // accel x, y, z in m/s^2.

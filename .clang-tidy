@@ -3,26 +3,29 @@ Checks: >
   -*,
   bugprone-*,
   -bugprone-easily-swappable-parameters,
-  -bugprone-derived-method-shadowing-base-method,
   concurrency-*,
   modernize-*,
   -modernize-use-trailing-return-type,
   -modernize-deprecated-headers,
+  misc-*,
   performance-*,
   portability-*,
   -portability-avoid-pragma-once,
   readability-*,
   -readability-identifier-length,
   -readability-magic-numbers,
-  -readability-suspicious-call-argument,
-  -readability-function-cognitive-complexity,
-  -readability-convert-member-functions-to-static
+  -readability-suspicious-call-argument
 
 WarningsAsErrors: "*"
 FormatStyle: file
 HeaderFilterRegex: '.*[/\\]{include}[/\\]'
 HeaderFileExtensions: ["hpp"]
+ImplementationFileExtensions: ["cpp"]
 CheckOptions:
+  cppcoreguidelines-avoid-do-while.IgnoreMacros: true
+  misc-const-correctness.WarnPointersAsValues: true
+  misc-const-correctness.TransformPointersAsValues: true
+
   # 1. Namespaces
   readability-identifier-naming.NamespaceCase: lower_case
 

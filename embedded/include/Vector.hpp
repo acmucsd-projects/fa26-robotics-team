@@ -9,79 +9,80 @@
 // Fixed-size mathematical vector
 template <typename T, size_t N>
   requires std::is_arithmetic_v<T> && (N > 0)
-struct Vec {
-  Array<T, N> data;
+class Vec {
+  Array<T, N> data_;
 
+public:
   constexpr Vec() noexcept = default;
 
   constexpr explicit Vec(T scalar) noexcept {
     for (size_t i{}; i < N; ++i) {
-      data[i] = scalar;
+      data_[i] = scalar;
     }
   }
 
   template <typename... Ts>
     requires(sizeof...(Ts) == N) && (std::convertible_to<Ts, T> && ...)
-  constexpr Vec(Ts... vals) noexcept : data{static_cast<T>(vals)...} {}
+  constexpr Vec(Ts... vals) noexcept : data_{static_cast<T>(vals)...} {}
 
   // Named component accessors for 1D-4D convenience
   [[nodiscard]] constexpr T &x() noexcept
     requires(N >= 1)
   {
-    return data[0];
+    return data_[0];
   }
   [[nodiscard]] constexpr const T &x() const noexcept
     requires(N >= 1)
   {
-    return data[0];
+    return data_[0];
   }
 
   [[nodiscard]] constexpr T &y() noexcept
     requires(N >= 2)
   {
-    return data[1];
+    return data_[1];
   }
   [[nodiscard]] constexpr const T &y() const noexcept
     requires(N >= 2)
   {
-    return data[1];
+    return data_[1];
   }
 
   [[nodiscard]] constexpr T &z() noexcept
     requires(N >= 3)
   {
-    return data[2];
+    return data_[2];
   }
   [[nodiscard]] constexpr const T &z() const noexcept
     requires(N >= 3)
   {
-    return data[2];
+    return data_[2];
   }
 
   [[nodiscard]] constexpr T &w() noexcept
     requires(N >= 4)
   {
-    return data[3];
+    return data_[3];
   }
   [[nodiscard]] constexpr const T &w() const noexcept
     requires(N >= 4)
   {
-    return data[3];
+    return data_[3];
   }
 
   [[nodiscard]] constexpr T &operator[](size_t idx) noexcept {
     assert(idx < N && "Vec index out of range");
-    return data[idx];
+    return data_[idx];
   }
 
   [[nodiscard]] constexpr const T &operator[](size_t idx) const noexcept {
     assert(idx < N && "Vec index out of range");
-    return data[idx];
+    return data_[idx];
   }
 
   constexpr Vec &operator+=(const Vec &other) noexcept {
     for (size_t i{}; i < N; ++i) {
-      data[i] += other.data[i];
+      data_[i] += other.data_[i];
     }
     return *this;
   }
@@ -90,35 +91,35 @@ struct Vec {
     requires std::is_signed_v<T>
   {
     for (size_t i{}; i < N; ++i) {
-      data[i] -= other.data[i];
+      data_[i] -= other.data_[i];
     }
     return *this;
   }
 
   constexpr Vec &operator*=(const Vec &other) noexcept {
     for (size_t i{}; i < N; ++i) {
-      data[i] *= other.data[i];
+      data_[i] *= other.data_[i];
     }
     return *this;
   }
 
   constexpr Vec &operator/=(const Vec &other) noexcept {
     for (size_t i{}; i < N; ++i) {
-      data[i] /= other.data[i];
+      data_[i] /= other.data_[i];
     }
     return *this;
   }
 
   constexpr Vec &operator*=(T scalar) noexcept {
     for (size_t i{}; i < N; ++i) {
-      data[i] *= scalar;
+      data_[i] *= scalar;
     }
     return *this;
   }
 
   constexpr Vec &operator/=(T scalar) noexcept {
     for (size_t i{}; i < N; ++i) {
-      data[i] /= scalar;
+      data_[i] /= scalar;
     }
     return *this;
   }
@@ -150,7 +151,7 @@ struct Vec {
   {
     Vec res;
     for (size_t i{}; i < N; ++i) {
-      res[i] = -data[i];
+      res[i] = -data_[i];
     }
     return res;
   }
@@ -160,7 +161,7 @@ struct Vec {
   [[nodiscard]] constexpr explicit operator Vec<T2, N>() const noexcept {
     Vec<T2, N> res{};
     for (size_t i{}; i < N; ++i) {
-      res[i] = static_cast<T2>(data[i]);
+      res[i] = static_cast<T2>(data_[i]);
     }
     return res;
   }
@@ -168,7 +169,7 @@ struct Vec {
   [[nodiscard]] constexpr T dot(const Vec &other) const noexcept {
     T sum{T{}};
     for (size_t i{}; i < N; ++i) {
-      sum += data[i] * other.data[i];
+      sum += data_[i] * other.data_[i];
     }
     return sum;
   }
@@ -177,9 +178,9 @@ struct Vec {
     requires(N == 3)
   {
     return Vec{
-        (data[1] * other.data[2]) - (data[2] * other.data[1]),
-        (data[2] * other.data[0]) - (data[0] * other.data[2]),
-        (data[0] * other.data[1]) - (data[1] * other.data[0]),
+        (data_[1] * other.data_[2]) - (data_[2] * other.data_[1]),
+        (data_[2] * other.data_[0]) - (data_[0] * other.data_[2]),
+        (data_[0] * other.data_[1]) - (data_[1] * other.data_[0]),
     };
   }
 

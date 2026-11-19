@@ -5,20 +5,22 @@
 #include <cmath>
 #include <concepts>
 #include <cstddef>
+#include <numbers>
 #include <type_traits>
 
-// Matrix with fixed rows and columns
+// Matrix with fixed rows_ and columns, with implementations stolen from Eigen
 template <typename T, size_t R, size_t C>
   requires std::is_arithmetic_v<T> && (R > 0) && (C > 0)
-struct Mat {
-  // Row-major storage: rows[r][c]
-  Array<Vec<T, C>, R> rows{};
+class Mat {
+  // Row-major storage: rows_[r][c]
+  Array<Vec<T, C>, R> rows_;
 
+public:
   // Default constructs to Identity when square (R == C), Zero otherwise
   constexpr Mat() noexcept {
     if constexpr (R == C) {
       for (size_t i{}; i < R; ++i) {
-        rows[i][i] = T{1};
+        rows_[i][i] = T{1};
       }
     }
   }
@@ -28,7 +30,7 @@ struct Mat {
     requires(R == C)
   {
     for (size_t i{}; i < R; ++i) {
-      rows[i][i] = diag;
+      rows_[i][i] = diag;
     }
   }
 
@@ -36,7 +38,7 @@ struct Mat {
   template <typename... RowVecs>
     requires(sizeof...(RowVecs) == R) &&
             (std::same_as<std::remove_cvref_t<RowVecs>, Vec<T, C>> && ...)
-  constexpr Mat(RowVecs &&...rowVecs) noexcept : rows{static_cast<RowVecs &&>(rowVecs)...} {}
+  constexpr Mat(RowVecs &&...rowVecs) noexcept : rows_{static_cast<RowVecs &&>(rowVecs)...} {}
 
   // Construct from R * C flat elements in row-major order
   template <typename... Elems>
@@ -45,7 +47,7 @@ struct Mat {
     const Array<T, R * C> flat{static_cast<T>(elems)...};
     for (size_t r{}; r < R; ++r) {
       for (size_t c{}; c < C; ++c) {
-        rows[r][c] = flat[(r * C) + c];
+        rows_[r][c] = flat[(r * C) + c];
       }
     }
   }
@@ -54,7 +56,7 @@ struct Mat {
   [[nodiscard]] static constexpr Mat zero() noexcept {
     Mat res{};
     for (size_t r{}; r < R; ++r) {
-      res.rows[r] = Vec<T, C>{};
+      res.rows_[r] = Vec<T, C>{};
     }
     return res;
   }
@@ -65,9 +67,10 @@ struct Mat {
     return Mat{};
   }
 
-  [[nodiscard]] static constexpr Mat rotX(T rad) noexcept
-    requires(R == 3 && C == 3) && std::floating_point<T>
+  [[nodiscard]] static constexpr Mat rotX(T deg) noexcept
+    requires(R == 3 && C == 3) && std::floating_point<T> && std::numbers::pi_v<T>
   {
+    T rad{deg * std::numbers::pi_v<T> / T{180}};
     const T c{std::cos(rad)};
     const T s{std::sin(rad)};
     return Mat{
@@ -77,9 +80,10 @@ struct Mat {
     };
   }
 
-  [[nodiscard]] static constexpr Mat rotY(T rad) noexcept
-    requires(R == 3 && C == 3) && std::floating_point<T>
+  [[nodiscard]] static constexpr Mat rotY(T deg) noexcept
+    requires(R == 3 && C == 3) && std::floating_point<T> && std::numbers::pi_v<T>
   {
+    T rad{deg * std::numbers::pi_v<T> / T{180}};
     const T c{std::cos(rad)};
     const T s{std::sin(rad)};
     return Mat{
@@ -89,9 +93,10 @@ struct Mat {
     };
   }
 
-  [[nodiscard]] static constexpr Mat rotZ(T rad) noexcept
-    requires(R == 3 && C == 3) && std::floating_point<T>
+  [[nodiscard]] static constexpr Mat rotZ(T deg) noexcept
+    requires(R == 3 && C == 3) && std::floating_point<T> && std::numbers::pi_v<T>
   {
+    T rad{deg * std::numbers::pi_v<T> / T{180}};
     const T c{std::cos(rad)};
     const T s{std::sin(rad)};
     return Mat{
@@ -103,19 +108,19 @@ struct Mat {
 
   [[nodiscard]] constexpr Vec<T, C> &operator[](size_t r) noexcept {
     assert(r < R && "Mat row index out of range.");
-    return rows[r];
+    return rows_[r];
   }
 
   [[nodiscard]] constexpr const Vec<T, C> &operator[](size_t r) const noexcept {
     assert(r < R && "Mat row index out of range.");
-    return rows[r];
+    return rows_[r];
   }
 
   [[nodiscard]] constexpr Vec<T, R> col(size_t c) const noexcept {
     assert(c < C && "Mat column index out of range.");
     Vec<T, R> res{};
     for (size_t r{}; r < R; ++r) {
-      res[r] = rows[r][c];
+      res[r] = rows_[r][c];
     }
     return res;
   }
@@ -125,14 +130,14 @@ struct Mat {
   {
     Mat res{};
     for (size_t r{}; r < R; ++r) {
-      res.rows[r] = -rows[r];
+      res.rows_[r] = -rows_[r];
     }
     return res;
   }
 
   constexpr Mat &operator+=(const Mat &other) noexcept {
     for (size_t r{}; r < R; ++r) {
-      rows[r] += other.rows[r];
+      rows_[r] += other.rows_[r];
     }
     return *this;
   }
@@ -141,7 +146,7 @@ struct Mat {
     requires std::is_signed_v<T>
   {
     for (size_t r{}; r < R; ++r) {
-      rows[r] -= other.rows[r];
+      rows_[r] -= other.rows_[r];
     }
     return *this;
   }
@@ -154,14 +159,14 @@ struct Mat {
 
   constexpr Mat &operator*=(T scalar) noexcept {
     for (size_t r{}; r < R; ++r) {
-      rows[r] *= scalar;
+      rows_[r] *= scalar;
     }
     return *this;
   }
 
   constexpr Mat &operator/=(T scalar) noexcept {
     for (size_t r{}; r < R; ++r) {
-      rows[r] /= scalar;
+      rows_[r] /= scalar;
     }
     return *this;
   }
@@ -185,7 +190,7 @@ struct Mat {
     for (size_t k{}; k < K; ++k) {
       const Vec<T, C> rhsCol{rhs.col(k)};
       for (size_t r{}; r < R; ++r) {
-        res[r][k] = rows[r].dot(rhsCol);
+        res[r][k] = rows_[r].dot(rhsCol);
       }
     }
     return res;
@@ -195,7 +200,7 @@ struct Mat {
   [[nodiscard]] constexpr Vec<T, R> operator*(const Vec<T, C> &v) const noexcept {
     Vec<T, R> res{};
     for (size_t r{}; r < R; ++r) {
-      res[r] = rows[r].dot(v);
+      res[r] = rows_[r].dot(v);
     }
     return res;
   }
@@ -210,7 +215,7 @@ struct Mat {
   [[nodiscard]] constexpr explicit operator Mat<T2, R, C>() const noexcept {
     Mat<T2, R, C> res{};
     for (size_t r{}; r < R; ++r) {
-      res.rows[r] = static_cast<Vec<T2, C>>(rows[r]);
+      res.rows_[r] = static_cast<Vec<T2, C>>(rows_[r]);
     }
     return res;
   }
@@ -219,7 +224,7 @@ struct Mat {
   [[nodiscard]] constexpr Mat<T, C, R> transpose() const noexcept {
     Mat<T, C, R> res{};
     for (size_t c{}; c < C; ++c) {
-      res.rows[c] = col(c);
+      res.rows_[c] = col(c);
     }
     return res;
   }
@@ -229,13 +234,13 @@ struct Mat {
     requires(R == C)
   {
     if constexpr (R == 1) {
-      return rows[0][0];
+      return rows_[0][0];
     } else if constexpr (R == 2) {
-      return (rows[0][0] * rows[1][1]) - (rows[0][1] * rows[1][0]);
+      return (rows_[0][0] * rows_[1][1]) - (rows_[0][1] * rows_[1][0]);
     } else if constexpr (R == 3) {
-      return rows[0][0] * (rows[1][1] * rows[2][2] - rows[1][2] * rows[2][1]) -
-             rows[0][1] * (rows[1][0] * rows[2][2] - rows[1][2] * rows[2][0]) +
-             rows[0][2] * (rows[1][0] * rows[2][1] - rows[1][1] * rows[2][0]);
+      return rows_[0][0] * (rows_[1][1] * rows_[2][2] - rows_[1][2] * rows_[2][1]) -
+             rows_[0][1] * (rows_[1][0] * rows_[2][2] - rows_[1][2] * rows_[2][0]) +
+             rows_[0][2] * (rows_[1][0] * rows_[2][1] - rows_[1][1] * rows_[2][0]);
     } else {
       Mat a{*this};
       T determinant{T{1}};
@@ -274,17 +279,17 @@ struct Mat {
     requires(R == C) && std::floating_point<T>
   {
     if constexpr (R == 1) {
-      assert(rows[0][0] != T{});
-      return Mat{T{1} / rows[0][0]};
+      assert(rows_[0][0] != T{});
+      return Mat{T{1} / rows_[0][0]};
     } else if constexpr (R == 2) {
       const T d{det()};
       assert(d != T{});
       const T invDet{T{1} / d};
       return Mat{
-          rows[1][1] * invDet,
-          -rows[0][1] * invDet,
-          -rows[1][0] * invDet,
-          rows[0][0] * invDet,
+          rows_[1][1] * invDet,
+          -rows_[0][1] * invDet,
+          -rows_[1][0] * invDet,
+          rows_[0][0] * invDet,
       };
     } else if constexpr (R == 3) {
       const T d{det()};
@@ -292,19 +297,19 @@ struct Mat {
       const T invDet{T{1} / d};
       return Mat{
           Vec<T, 3>{
-              (rows[1][1] * rows[2][2] - rows[1][2] * rows[2][1]) * invDet,
-              (rows[0][2] * rows[2][1] - rows[0][1] * rows[2][2]) * invDet,
-              (rows[0][1] * rows[1][2] - rows[0][2] * rows[1][1]) * invDet,
+              (rows_[1][1] * rows_[2][2] - rows_[1][2] * rows_[2][1]) * invDet,
+              (rows_[0][2] * rows_[2][1] - rows_[0][1] * rows_[2][2]) * invDet,
+              (rows_[0][1] * rows_[1][2] - rows_[0][2] * rows_[1][1]) * invDet,
           },
           Vec<T, 3>{
-              (rows[1][2] * rows[2][0] - rows[1][0] * rows[2][2]) * invDet,
-              (rows[0][0] * rows[2][2] - rows[0][2] * rows[2][0]) * invDet,
-              (rows[0][2] * rows[1][0] - rows[0][0] * rows[1][2]) * invDet,
+              (rows_[1][2] * rows_[2][0] - rows_[1][0] * rows_[2][2]) * invDet,
+              (rows_[0][0] * rows_[2][2] - rows_[0][2] * rows_[2][0]) * invDet,
+              (rows_[0][2] * rows_[1][0] - rows_[0][0] * rows_[1][2]) * invDet,
           },
           Vec<T, 3>{
-              (rows[1][0] * rows[2][1] - rows[1][1] * rows[2][0]) * invDet,
-              (rows[0][1] * rows[2][0] - rows[0][0] * rows[2][1]) * invDet,
-              (rows[0][0] * rows[1][1] - rows[0][1] * rows[1][0]) * invDet,
+              (rows_[1][0] * rows_[2][1] - rows_[1][1] * rows_[2][0]) * invDet,
+              (rows_[0][1] * rows_[2][0] - rows_[0][0] * rows_[2][1]) * invDet,
+              (rows_[0][0] * rows_[1][1] - rows_[0][1] * rows_[1][0]) * invDet,
           },
       };
     } else {

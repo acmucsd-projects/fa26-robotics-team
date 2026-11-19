@@ -1,3 +1,20 @@
+Index:
+  Background: Build
+
+InlayHints:
+  Enabled: true
+  ParameterNames: true
+  DeducedTypes: true
+  Designators: true
+  BlockEnd: true
+
+Hover:
+  ShowAKA: true
+
+Diagnostics:
+  UnusedIncludes: Strict
+  MissingIncludes: Strict
+
 CompileFlags:
   CompilationDatabase: embedded/.pio/build
   Add:
