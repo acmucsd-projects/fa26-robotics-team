@@ -47,6 +47,21 @@ def main():
     # output_thread = start_output_thread(global_state)
     input_thread = start_input_thread(global_state)
 
+    win_name = "RF-DETR Live Feed"
+    cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)  # Allows resizing and maximizing
+    is_fullscreen = False
+
+    def toggle_fullscreen(event, x, y, flags, param):
+        global is_fullscreen
+        # Double-click or middle-click to toggle fullscreen
+        if event == cv2.EVENT_LBUTTONDBLCLK or event == cv2.EVENT_MBUTTONDOWN:
+            is_fullscreen = not is_fullscreen
+            prop = cv2.WINDOW_FULLSCREEN if is_fullscreen else cv2.WINDOW_NORMAL
+            cv2.setWindowProperty(win_name, cv2.WND_PROP_FULLSCREEN, prop)
+
+    cv2.setMouseCallback(win_name, toggle_fullscreen)
+
+
     try:
         while (
             global_state.running
@@ -68,12 +83,17 @@ def main():
                     cv2.COLOR_RGB2BGR
                 )
 
-                cv2.imshow("RF-DETR Live Feed", frame_bgr)
+                cv2.imshow(win_name, frame_bgr)
 
             except queue.Empty:
                 pass
 
             # Handle keyboard input on every iteration
+            # Optional keyboard toggle with 'f'
+            if cv2.waitKey(1) & 0xFF == ord("f"):
+                is_fullscreen = not is_fullscreen
+                prop = cv2.WINDOW_FULLSCREEN if is_fullscreen else cv2.WINDOW_NORMAL
+                cv2.setWindowProperty(win_name, cv2.WND_PROP_FULLSCREEN, prop)
             if cv2.waitKey(1) & 0xFF == ord("q"):
                 global_state.running = False
                 break

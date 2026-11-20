@@ -237,6 +237,7 @@ def threadTarget(global_state):
 
             height, width = frame.shape[:2]
             elapsed = 0.0 if motion is None else captured_at - motion.last_seen_at
+            
             if motion is not None and elapsed >= MAX_OCCLUSION_S:
                 # Anchor long-gap recovery to the last detection, before extrapolation.
                 lost_target_center = box_center(motion.last_box)
