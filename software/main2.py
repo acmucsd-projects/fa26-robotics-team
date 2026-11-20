@@ -3,7 +3,8 @@ import cv2
 
 from global_state import Global
 from input_process import start_input_thread
-from processing import start_process_thread
+# from processing import start_process_thread
+from processing_with_tracking import start_process_thread
 from output_process import start_output_thread
 
 class Main():

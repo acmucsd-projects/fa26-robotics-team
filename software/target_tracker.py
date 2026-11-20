@@ -1,6 +1,5 @@
 import math
-
-
+    
 class TargetTracker:
     def __init__(self, max_distance=100):
         self.target_box = None

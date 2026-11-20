@@ -14,7 +14,8 @@ def threadTarget(global_state: Global):
    
     global_state.running = True
 
-    cap = cv2.VideoCapture("https://localhost:5050/stream")
+    # cap = cv2.VideoCapture("https://localhost:5050/stream")
+    cap = cv2.VideoCapture(0)
     cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
     print(f"FPS: {cap.get(cv2.CAP_PROP_FPS)}")
