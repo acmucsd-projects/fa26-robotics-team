@@ -15,15 +15,14 @@ _viewers = 0  # only encode JPEGs while someone is watching
 
 
 def publish_frame(frame):
-    """Called from the processing thread with the annotated frame."""
     global _latest_jpeg
     if _viewers == 0:
         return
-    ok, buf = cv2.imencode(".jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 70])
+    bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+    ok, buf = cv2.imencode(".jpg", bgr, [cv2.IMWRITE_JPEG_QUALITY, 70])
     if ok:
         with _jpeg_lock:
             _latest_jpeg = buf.tobytes()
-
 
 def _mjpeg():
     global _viewers
