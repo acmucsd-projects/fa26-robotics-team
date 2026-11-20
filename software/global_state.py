@@ -17,6 +17,7 @@ class Global:
         self.output_stack = LifoQueue()
         self.data_stack = LifoQueue()
         self.preview_stack = LifoQueue()
+        # self.jpeg_queue = LifoQueue()
         self.center_point = None
         self.hand_position = None
         self.running = False

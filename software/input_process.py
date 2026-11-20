@@ -1,7 +1,24 @@
 import cv2
 import threading
-
+import queue
 from global_state import Global
+
+jpeg_queue = queue.Queue(maxsize=1)
+
+
+def put_latest(target_queue, item):
+    try:
+        target_queue.put_nowait(item)
+    except queue.Full:
+        # Discard the waiting item if the consumer hasn't taken it yet.
+        try:
+            target_queue.get_nowait()
+        except queue.Empty:
+            pass
+        else:
+            target_queue.task_done()
+
+        target_queue.put_nowait(item)
 
 def threadTarget(global_state: Global):
     """
@@ -56,3 +73,4 @@ def start_input_thread(global_state: Global):
 
     thread.start()
     return thread
+

@@ -229,11 +229,11 @@ def threadTarget(global_state):
             except queue.Empty:
                 pass
 
-            # if len(packet) == 3:
-            #     frame_number, captured_at, frame = packet
-            # else:
-            frame_number, frame = packet
-            captured_at = time.monotonic()
+            if len(packet) == 3:
+                frame_number, captured_at, frame = packet
+            else:
+                frame_number, frame = packet
+                captured_at = time.monotonic()
 
             height, width = frame.shape[:2]
             elapsed = 0.0 if motion is None else captured_at - motion.last_seen_at
