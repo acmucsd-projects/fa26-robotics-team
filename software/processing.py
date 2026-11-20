@@ -135,6 +135,14 @@ def make_roi(box, frame_width, frame_height):
 
     return (roi_x, roi_y, roi_width, roi_height)
 
+AIM_Y_RATIO = 0.25
+
+def get_aim_point(box):
+    x1, y1, x2, y2 = box
+    return (
+        int((x1 + x2) / 2),
+        int(y1 + (y2 - y1) * AIM_Y_RATIO),
+    )
 
 def threadTarget(global_state):
 
@@ -224,7 +232,6 @@ def threadTarget(global_state):
             detections = detections[
                 detections.class_id == PERSON_CLASS_ID
             ]
-
             if offset_x != 0 or offset_y != 0:
                 detections.xyxy[:, [0, 2]] += offset_x
                 detections.xyxy[:, [1, 3]] += offset_y
@@ -331,6 +338,9 @@ def threadTarget(global_state):
                             target_lost = True
             else:
                 target_lost = True
+
+            if center is not None and tracker.target_box is not None:
+                center = get_aim_point(tracker.target_box)
 
             global_state.center_point = center
             if center is not None:
