@@ -14,6 +14,8 @@ from mediapipe.tasks.python import vision
 from rfdetr import RFDETR
 from global_state import Global
 from target_tracker import TargetTracker
+#added below for server.py
+from server import start_server, publish_frame
 
 import paho.mqtt.client as mqtt
 
@@ -175,6 +177,17 @@ def threadTarget(global_state):
                 continue
 
             height, width = frame.shape[:2]
+            #added below for server.py
+            if global_state.reset_requested:
+                global_state.reset_requested = False
+                tracker.reset()
+                roi = None
+                misses = 0
+                target_lost = False
+                acquisition_finished = False
+                # Gesture mode only: the landmarker was closed after locking
+                if not SIM_AUTO_LOCK and hands is None:
+                    hands = vision.HandLandmarker.create_from_options(options)
 
             if target_lost:
                 global_state.center_point = None
@@ -387,6 +400,7 @@ def threadTarget(global_state):
                     (0, 0, 255),
                     1
                 )
+            publish_frame(frame)
 
             global_state.output_stack.put((frame_number, frame))
             global_state.data_stack.put((frame_number, detections))
@@ -404,12 +418,24 @@ def threadTarget(global_state):
         print("[PROCESSING] Thread exited.")
 
 
+#def start_process_thread(global_state):
+ #   thread = threading.Thread(
+  #      target=threadTarget,
+   #     args=(global_state,),
+    #    daemon=False
+    #)
+
+    #thread.start()
+    #return thread
+
 def start_process_thread(global_state):
+    global_state.reset_requested = False
+    start_server(global_state, port=8000)
+
     thread = threading.Thread(
         target=threadTarget,
         args=(global_state,),
         daemon=False
     )
-
     thread.start()
     return thread
