@@ -12,6 +12,8 @@ import paho.mqtt.client as mqtt
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from rfdetr import RFDETR
+from gimbal_kinematics import GimbalKinematics
+
 
 # Model paths and detection settings
 BASE_DIR = Path(__file__).resolve().parent
@@ -19,12 +21,18 @@ MODEL_PATH = BASE_DIR / 'Arnavrfdetr_2.pth'
 HAND_MODEL_PATH = BASE_DIR / 'hand_landmarker.task'
 
 PERSON_CLASS_ID = 0
-DETECTION_THRESHOLD = 0.2
+DETECTION_THRESHOLD = 0.25
 ROI_W = ROI_H = 385
 MAX_OCCLUSION_S = 1.2
 FULL_FRAME_AFTER_S = 0.35
 MAX_VELOCITY_SAMPLE_GAP_S = 0.25
 REACQUIRE_RADIUS_PX = 100
+
+# Set these to the FOV of the camera stream used for detection.
+CAMERA_HORIZONTAL_FOV_DEG = 60.0  # Example value. Replace with your camera's FOV.
+CAMERA_VERTICAL_FOV_DEG = None  # Infer from square pixels unless measured.
+kinematics = GimbalKinematics(CAMERA_HORIZONTAL_FOV_DEG, CAMERA_VERTICAL_FOV_DEG)
+
 
 # MQTT settings for sending target coordinates to the gimbal
 BROKER = 'broker.emqx.io'
@@ -37,7 +45,7 @@ client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 client.connect(BROKER, PORT, keepalive=60)
 client.loop_start()
 
-
+# future iterations using 2D inverse kinematics will be send over the form f'angle for bottom motor, angle for top motor'
 def send(center, width, height):
     if center[0] != width//2 and center[1] != height//2:
         if center[0] < width//2 and center[1] < height//2:
@@ -61,6 +69,11 @@ def send(center, width, height):
     # # info.wait_for_publish()
     # print(f'Sent center point: {center[0]},{center[1]}')
 
+def send_kin(center, width, height):
+    # Wire order is bottom motor (yaw), then top motor (pitch).
+    # Values are camera-relative corrections in degrees, positive right and up.
+    yaw_deg, pitch_deg = kinematics.angles_for_pixel(center, width, height)
+    client.publish(TOPIC, f'{yaw_deg:.3f},{pitch_deg:.3f}', qos=1)
 
 def is_open_raised_hand(lm):
     # Check that all four fingers are extended upward
@@ -237,7 +250,7 @@ def threadTarget(global_state):
 
             height, width = frame.shape[:2]
             elapsed = 0.0 if motion is None else captured_at - motion.last_seen_at
-            
+
             if motion is not None and elapsed >= MAX_OCCLUSION_S:
                 # Anchor long-gap recovery to the last detection, before extrapolation.
                 lost_target_center = box_center(motion.last_box)
@@ -302,7 +315,8 @@ def threadTarget(global_state):
                 motion.observe(matched_box, captured_at)
                 center = tuple(round(value) for value in box_center(matched_box))
                 global_state.center_point = center
-                send(center, width, height)
+                # send(center, width, height)
+                send_kin(center, width, height)
                 draw_target(frame, matched_box, center)
             else:
                 global_state.center_point = None
