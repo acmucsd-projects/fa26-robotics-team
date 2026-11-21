@@ -83,7 +83,7 @@ void setup() {
 
   motorsBegin();  // motor.cpp: finds MIN1/MAX1 and MIN2/MAX2, centres both servos
 
-  // NEW: if a servo didn't answer or its limits come out tiny or backwards: it uses the full range
+  // if a servo didn't answer or its limits come out tiny or backwards: it uses the full range
   if (MAX1 - MIN1 < 500) { MIN1 = 0; MAX1 = 4095; }
   if (MAX2 - MIN2 < 500) { MIN2 = 0; MAX2 = 4095; }
   panCenter = (MIN1 + MAX1) / 2;

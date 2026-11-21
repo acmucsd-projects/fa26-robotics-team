@@ -118,7 +118,7 @@ void loop() {
       // NEW: target vs measured tilt -> correction -> servo
       if (dt > 0 && dt < 0.1f) {  // skip glitches and long gaps
         float targetDeg = (tiltTarget - STEPS_CENTER) / STEPS_PER_DEG;
-        tiltCorrDeg = TILT_SIGN * tiltPid.computePID(filter.tilt, targetDeg, dt);
+        tiltCorrDeg = TILT_SIGN * tiltPid.computePID(filter.tilt, targetDeg, dt);//adds PID to tilt correction
         int pos = constrain((int)(tiltTarget + tiltCorrDeg * STEPS_PER_DEG), 0, 4095);
         MovePos(SERVO_TILT, pos);
       }
