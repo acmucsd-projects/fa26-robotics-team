@@ -1,9 +1,9 @@
 #include "motor.hpp"
 #include "offset_source.hpp"
 #include <Arduino.h>
-#include<MQTT.cpp>
 
-//  use motor.cpp exactly as it is. It has its own setup() and loop() that are not used by this file, but it defines MovePos() and the servo limits.
+// NEW: use motor.cpp exactly as it is. It has its own setup() and loop(),
+// so rename them while it's read in. (platformio.ini: build_src_filter = +<*> -<motor.cpp>)
 #include <Wire.h>
 #include "SCServo.h"
 #include <vector>
@@ -16,6 +16,31 @@
 #ifdef USE_IMU
 #include "IMU.hpp"
 #include "complementary_filter.hpp"
+#endif
+
+#ifdef USE_MQTT
+#include <PubSubClient.h>
+// NEW: these live in mqtt.cpp (unchanged). This just tells main.cpp they exist.
+extern PubSubClient client;
+void setup_wifi();
+void reconnect();
+void callback(char *topic, byte *payload, unsigned int length);
+
+// NEW: the latest "x,y" command from MQTT, waiting for loop() to use it
+float mqttX = 0, mqttY = 0;
+bool mqttHasCmd = false;
+
+// NEW: runs when a message arrives. mqtt.cpp's callback() prints it,
+// then this reads "x,y" so the gimbal can move.
+void onMqttMessage(char *topic, byte *payload, unsigned int length) {
+  callback(topic, payload, length);  // mqtt.cpp: print the message
+  char msg[32];
+  unsigned int n = length < sizeof(msg) - 1 ? length : sizeof(msg) - 1;
+  memcpy(msg, payload, n);  // payload has no end marker, so copy it
+  msg[n] = '\0';            // and add one
+  if (sscanf(msg, "%f,%f", &mqttX, &mqttY) == 2)
+    mqttHasCmd = true;
+}
 #endif
 
 constexpr int SERVO_PAN = 1;
@@ -84,13 +109,19 @@ void setup() {
 
   motorsBegin();  // motor.cpp: finds MIN1/MAX1 and MIN2/MAX2, centres both servos
 
-  // if a servo didn't answer or its limits come out tiny or backwards: it uses the full range
+  // NEW: if a servo didn't answer, its limits come out tiny or backwards: use full range
   if (MAX1 - MIN1 < 500) { MIN1 = 0; MAX1 = 4095; }
   if (MAX2 - MIN2 < 500) { MIN2 = 0; MAX2 = 4095; }
   panCenter = (MIN1 + MAX1) / 2;
   tiltCenter = (MIN2 + MAX2) / 2;
-  panTarget = panCenter;    // start where motor.cpp left the servos 
+  panTarget = panCenter;    // start where motor.cpp left the servos (no jump)
   tiltTarget = tiltCenter;
+
+#ifdef USE_MQTT
+  setup_wifi();                               // NEW: mqtt.cpp (waits until Wi-Fi connects)
+  client.setServer("broker.emqx.io", 1883);   // NEW: which broker
+  client.setCallback(onMqttMessage);          // NEW: who gets the messages
+#endif
 
 #ifdef USE_IMU
   lastImuUs = micros();  // motorsBegin() takes seconds; don't count it as dt
@@ -98,6 +129,12 @@ void setup() {
 }
 
 void loop() {
+#ifdef USE_MQTT
+  if (!client.connected())
+    reconnect();   // NEW: mqtt.cpp (waits until the broker answers)
+  client.loop();   // NEW: receive messages (calls onMqttMessage)
+#endif
+
   static uint32_t lastTick = 0;
   if (millis() - lastTick < LOOP_MS)
     return;
@@ -105,7 +142,16 @@ void loop() {
 
   // Open loop: offset -> servo targets.
   Offset o;
-  if (pollOffset(o)) {
+  bool gotOffset = pollOffset(o);
+#ifdef USE_MQTT
+  if (!gotOffset && mqttHasCmd) {  // NEW: no local offset? use the MQTT command
+    o.x = mqttX;
+    o.y = mqttY;
+    mqttHasCmd = false;
+    gotOffset = true;
+  }
+#endif
+  if (gotOffset) {  // CHANGED: was if (pollOffset(o))
     lastOffsetMs = millis();
     panTarget = constrain(panTarget + PAN_GAIN * o.x, MIN1, MAX1);     // CHANGED: measured limits
     tiltTarget = constrain(tiltTarget + TILT_GAIN * o.y, MIN2, MAX2);
