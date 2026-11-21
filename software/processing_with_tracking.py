@@ -136,7 +136,9 @@ def draw_target(frame, box, center):
 
 def box_center(box):
     x1, y1, x2, y2 = box
-    return (float(x1 + x2) / 2, float(y1 + y2) / 2)
+    # return (float(x1 + x2) / 2, float(y1 + y2) / 2)
+    h = y2 - y1
+    return round((float(x1 + x2) / 2)), round(-h*0.25 + float(y1 + y2) / 2)
 
 
 def closest_box_to_center(boxes, center):
