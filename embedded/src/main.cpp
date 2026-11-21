@@ -1,6 +1,7 @@
 #include "motor.hpp"
 #include "offset_source.hpp"
 #include <Arduino.h>
+#include<MQTT.cpp>
 
 //  use motor.cpp exactly as it is. It has its own setup() and loop() that are not used by this file, but it defines MovePos() and the servo limits.
 #include <Wire.h>
