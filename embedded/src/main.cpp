@@ -21,7 +21,6 @@ float tiltTarget = STEPS_CENTER;
 uint32_t lastOffsetMs = 0;
 
 #ifdef USE_IMU
-// TODO: confirm the pins. CalibrateIMU.cpp uses 6, 7; the PR's main.cpp used 8, 9.
 constexpr uint8_t IMU_SDA = 6;
 constexpr uint8_t IMU_SCL = 7;
 Imu imu(IMU_SDA, IMU_SCL);
