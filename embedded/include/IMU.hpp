@@ -7,10 +7,6 @@
 #include "Vector.hpp"       /* Vec3 from the IMU branch, holds x y z together */
 #include <Arduino.h>
 
-/* a 16bit raw values ranges -32768 to +32767 */
-/* IMU is set to +-4g, so 32768 / 4 = 8192 */
-/* this is so that raw value / 8192 equals to 1g */
-constexpr float ACCEL_LSB_PER_G = 8192.0f;
 
 /* accel = x y z in m/s^2, gyro = x y z in deg/s */
 /* switched from 6 floats to Vec3 so main.cpp can use r.accel.x */
