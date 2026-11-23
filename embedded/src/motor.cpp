@@ -2,6 +2,7 @@
 #include <Wire.h>
 #include "SCServo.h"
 #include <vector>
+#include <motor.hpp>
 
 SMS_STS st;
 
@@ -19,17 +20,25 @@ const int SERVO_INVCENTER = 2438;
 const int MAX_CURR = 8;
 
 void MovePos(int id, int position) {
-	st.WritePosEx(id, position, 2000, 50);
+	(st.WritePosEx(id, position, 2000, 50) == 0) ? Serial.println("lost") : Serial.print("succeeded");
 }
 
 void setup() {
+	motorsBegin();
+}
+
+void motorsBegin() {
 	// baud rate 115200
 	Serial.begin(115200);
 
 	Serial1.begin(1000000, SERIAL_8N1, SERVO_RX, SERVO_TX);
 	st.pSerial = &Serial1;
+
+	// these are known-safe values
 	MovePos(SERVO1, 2422);
 	MovePos(SERVO2, 2438);
+
+	// servo takes time to do its stuff so we give it time
 	delay(1500);
 	Serial.println("Scanning bus");
 
@@ -47,8 +56,10 @@ void setup() {
 
 	delay(500);
 
-	// ---- find MIN1 / MIN2 (both servos stepping together) ----
+	// while any motor is still calibrating, continue
+
 	while (moving1 || moving2) {
+		// if first is moving
 		if (moving1) {
 			if (st.ReadCurrent(SERVO1) < MAX_CURR && st.ReadCurrent(SERVO1) != -1) {
 				MovePos(SERVO1, currPos1-10);
@@ -65,6 +76,7 @@ void setup() {
 			}
 		}
 
+		//if second is moving
 		if (moving2) {
 			if (st.ReadCurrent(SERVO2) < MAX_CURR && st.ReadCurrent(SERVO2) != -1) {
 				MovePos(SERVO2, currPos2-10);
@@ -89,7 +101,8 @@ void setup() {
 	moving1 = true;
 	moving2 = true;
 
-	// ---- find MAX1 / MAX2 (both servos stepping together) ----
+	// while any motor is still calibrating, continue
+
 	while (moving1 || moving2) {
 		if (moving1) {
 			if (st.ReadCurrent(SERVO1) < MAX_CURR && st.ReadCurrent(SERVO1) != -1) {
@@ -123,16 +136,18 @@ void setup() {
 		delay(20);
 	}
 
+	if (MIN1 > MAX1 || MIN2 > MAX2) {
+		Serial.println("houston we have a problem");
+	}
+
+	//move to avg of the edges
 	MovePos(SERVO1, (MAX1+MIN1)/2);
 	MovePos(SERVO2, (MAX2+MIN2)/2);
 
+	// print!
 	Serial.println(MIN1);
 	Serial.println(MAX1);
 	Serial.println(MIN2);
 	Serial.println(MAX2);
 
-}
-
-void loop() {
-	
 }

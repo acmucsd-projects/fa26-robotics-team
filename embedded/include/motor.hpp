@@ -9,4 +9,4 @@
 
 
 void MovePos(int id, int position);
-
+void motorsBegin();
