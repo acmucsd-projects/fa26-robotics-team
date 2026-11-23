@@ -1,9 +1,10 @@
 #pragma once
+#include <concepts>
 #include <type_traits>
 
 template <typename T>
+  requires std::is_arithmetic_v<T>
 struct Vec3 {
-  static_assert(std::is_arithmetic_v<T>, "Vec3 needs an arithmetic type");
   T x;
   T y;
   T z;

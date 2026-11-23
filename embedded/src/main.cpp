@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 #include "motor.hpp"
 #include "offset_source.hpp"
 #include <Arduino.h>
@@ -29,6 +30,15 @@ bool imuOk = false;
 uint32_t lastImuUs = 0;
 uint32_t imuFails = 0;
 #endif
+=======
+#include "IMU.hpp"
+#include "complimentary_filter.hpp"
+#include <Arduino.h>
+
+/* sda 6, scl 7, replace with the line the calibrate firmware prints */
+Imu imu(6, 7);
+ComplementaryFilter filter;
+>>>>>>> aubrey
 
 void setup() {
   Serial.begin(115200);
@@ -71,6 +81,7 @@ void loop() {
     // No offsets lately: hold position.
   }
 
+<<<<<<< HEAD
 #ifdef USE_IMU
   // Observe only: read the IMU and print it next to what we commanded.
   // Nothing here moves the servos yet.
@@ -97,4 +108,24 @@ void loop() {
                   r.gyro.y, r.gyro.z, (unsigned long)imuFails);
   }
 #endif
+=======
+  /* dt = seconds since the last loop, the filter needs it to turn deg/s into
+   * deg */
+  static uint32_t last = micros();
+  uint32_t now = micros();
+  /* gyro y = tilt, gyro z = pan */
+  filter.update(r.accel.x, r.accel.y, r.accel.z, r.gyro.y, r.gyro.z,
+                (now - last) / 1e6f);
+  last = now;
+
+  /* |a| should be about 9.81 when the board is still */
+  Serial.printf("accel (m/s^2): %7.2f %7.2f %7.2f  |a| %6.2f   gyro (deg/s): "
+                "%8.2f %8.2f %8.2f   tilt %7.2f  pan %7.2f\n",
+                r.accel.x, r.accel.y, r.accel.z,
+                sqrtf(r.accel.x * r.accel.x + r.accel.y * r.accel.y +
+                      r.accel.z * r.accel.z),
+                r.gyro.x, r.gyro.y, r.gyro.z, filter.tilt, filter.pan);
+  /* ~100hz, matches the imu rate */
+  delay(10);
+>>>>>>> aubrey
 }

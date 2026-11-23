@@ -1,19 +1,24 @@
 #include "IMU.hpp"
 #include <Wire.h>
 
+<<<<<<< HEAD
+=======
+/* calibration now comes in here instead of being loaded from flash */
+>>>>>>> aubrey
 Imu::Imu(uint8_t sda, uint8_t scl, int8_t addr, Vec3<float> accelOffset,
          Vec3<float> accelScale)
     : sda(sda), scl(scl), addr(addr), accelOffset(accelOffset),
       accelScale(accelScale) {}
 
 bool Imu::begin() {
-  // The DFRobot library starts Wire on the default pins, so restart it on ours.
   Wire.end();
   Wire.begin(sda, scl);
 
-  // The library has no setters for range and rate, so we write the registers.
-  // Config byte = filter mode in the top 4 bits | output rate in the bottom 4.
-  // To change a range, also change the matching constant in IMU.hpp.
+  /* ok is only true if every step works */
+  /* config byte = filter mode in the top half (<< 4) | output rate in the
+   * bottom half */
+  /* accel range gets bumped from the library default +-2g to +-4g, cus why not
+   */
   bool ok = bmi160.I2cInit(addr) == BMI160_OK &&
             writeReg(BMI160_ACCEL_CONFIG_ADDR,
                      BMI160_ACCEL_BW_OSR4_AVG1 << 4 | BMI160_ACCEL_ODR_100HZ) &&
@@ -32,12 +37,18 @@ void Imu::averageRaw(Vec3<float> &gyro, Vec3<float> &accel, int samples) {
   int16_t d[6];
   // n only goes up on a good read, so we always average exactly `samples`.
   for (int n = 0; n < samples;) {
+    // comparing readRaw to getAccelGyroData: rewRaw has 1.4ms of bus time and no delays but other has at least 23ms of built-in delays and a 1-ms wait after setting the reg
+    // readRaw will also return false if chip doesnt ack 
     if (readRaw(d)) {
       for (int i = 0; i < 6; i++)
         sum[i] += d[i];
       n++;
     }
+<<<<<<< HEAD
     // 10 ms = one new reading at 100 Hz.
+=======
+    /* 10ms = one new reading at 100hz */
+>>>>>>> aubrey
     delay(10);
   }
   gyro = Vec3<float>(sum[0], sum[1], sum[2]) / float(samples);
@@ -71,17 +82,18 @@ bool Imu::read(ImuReading &out) {
   if (!readRaw(d))
     return false;
 
-  Vec3<float> rawGyro(d[0], d[1], d[2]);
+  /* d is gyro 0-2 then accel 3-5 */
   Vec3<float> rawAccel(d[3], d[4], d[5]);
-  // Accel: remove offset, fix sensitivity, then counts -> m/s^2.
-  out.accel =
-      (rawAccel - accelOffset) * accelScale * (9.80665f / ACCEL_LSB_PER_G);
-  // Gyro: remove bias, then counts -> deg/s.
-  out.gyro = (rawGyro - gyroBias) / GYRO_LSB_PER_DPS;
+  Vec3<float> rawGyro(d[0], d[1], d[2]);
+  /* accel: remove offset, fix sensitivity with scale, then raw to m/s^2 */
+  out.accel = (rawAccel - accelOffset) * accelScale * (9.80665f / ACCEL_LSB_PER_G);
+  /* gyro: remove bias, then raw to deg/s */
+  out.gyro = (rawGyro - gyroBias) / 16.4f;
   return true;
 }
 
-// Sends 2 bytes: which register, then the value. True if the chip answered.
+/* sends 2 bytes to the chip: which register, then the value to put in it */
+/* returns true if the chip acknowledged */
 bool Imu::writeReg(uint8_t reg, uint8_t value) {
   Wire.beginTransmission(addr);
   Wire.write(reg);
