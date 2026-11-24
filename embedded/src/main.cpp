@@ -2,8 +2,7 @@
 #include "offset_source.hpp"
 #include <Arduino.h>
 
-// NEW: use motor.cpp exactly as it is. It has its own setup() and loop(),
-// so rename them while it's read in. (platformio.ini: build_src_filter = +<*> -<motor.cpp>)
+// NEW: use motor.cpp exactly as it is. It has its own setup() and loop()
 #include <Wire.h>
 #include "SCServo.h"
 #include <vector>
