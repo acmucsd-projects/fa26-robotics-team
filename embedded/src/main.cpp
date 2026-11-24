@@ -25,7 +25,7 @@ void setup_wifi();
 void reconnect();
 void callback(char *topic, byte *payload, unsigned int length);
 
-// NEW: the latest "x,y" command from MQTT, waiting for loop() to use it
+// NEW: the latest "x,y" command from MQTT, waiting for loop() to use it. assumption that mqtt gives x,y values for the offset, which is then used to move the gimbal. The values are stored in mqttX and mqttY, and mqttHasCmd indicates if a new command has been received.
 float mqttX = 0, mqttY = 0;
 bool mqttHasCmd = false;
 
@@ -58,10 +58,12 @@ float panCenter = STEPS_CENTER;   // NEW: measured centres, set in setup()
 float tiltCenter = STEPS_CENTER;
 
 #ifdef USE_IMU
-// TODO: confirm the pins. CalibrateIMU.cpp uses 6, 7; the PR's main.cpp used 8, 9.
-constexpr uint8_t IMU_SDA = 6;
-constexpr uint8_t IMU_SCL = 7;
-Imu imu(IMU_SDA, IMU_SCL);
+// NEW: the IMU pins (IMU_SDA, IMU_SCL) and address now live in IMU.hpp,
+// so they are no longer set here. Change them there if the wiring differs.
+// NEW: Imu now takes the accelerometer calibration instead of pins.
+// {0,0,0} offset and {1,1,1} scale = no correction yet. After running
+// CalibrateIMU, replace this line with the "Imu imu(...)" line it prints.
+Imu imu({0, 0, 0}, {1, 1, 1});
 ComplementaryFilter filter;
 bool imuOk = false;
 uint32_t lastImuUs = 0;
