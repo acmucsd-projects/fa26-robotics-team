@@ -2,7 +2,7 @@ import cv2
 import os
 from rfdetr import RFDETR
 
-MODEL_PATH = os.path.abspath("software/Arnavrfdetr_2.pth")
+MODEL_PATH = os.path.abspath("Arnavrfdetr_2.pth")
 
 # Load checkpoint using absolute path
 model = RFDETR.from_checkpoint(MODEL_PATH)

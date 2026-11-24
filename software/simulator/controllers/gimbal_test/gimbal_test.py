@@ -1,221 +1,270 @@
-import io
-import json
-import threading
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import sys
+import math
+import queue
+from pathlib import Path
+
+import cv2
 import numpy as np
-import paho.mqtt.client as mqtt
-from controller import Robot
+from controller import Supervisor
 
-try:
-    import cv2
-    HAS_CV2 = True
-except ImportError:
-    from PIL import Image
-    HAS_CV2 = False
+# Make your pipeline files importable (software/ folder)
+SOFTWARE_DIR = Path(__file__).resolve().parents[3]
+sys.path.insert(0, str(SOFTWARE_DIR))
 
-# --- EMQX Broker Configuration ---
-BROKER = "broker.emqx.io"
-PORT = 1883
-TOPIC = "gimbal/commands"
-USERNAME = ""
-PASSWORD = ""
+from global_state import Global
+from processing import start_process_thread
+from output_process import start_output_thread
 
-# --- Localhost Stream Configuration ---
-STREAM_HOST = "0.0.0.0"
-STREAM_PORT = 8080
-JPEG_QUALITY = 80               # 1-100 (lower = lower latency & bandwidth)
+# ---------------- Config ----------------
+TRACK_MODE = "vision"       # "vision"     = aim using gs.center_point from processing.py
+                            # "supervisor" = aim using the skin's true position (no detector needed)
 
-# --- Step Size per Command (in radians) ---
-YAW_STEP = 0.08                  # ~11.5 degrees per "left"/"right" message
-PITCH_STEP = 0.08                # ~11.5 degrees per "up"/"down" message
+FRAME_EVERY = 2        # send every Nth sim step to the model
+RAISE_HAND_AT = 1.0    # sim seconds
 
-# --- Target Motor Positions ---
-target_yaw = 0.0
-target_pitch = 0.0
-position_updated = True
+# --- Gimbal motion (smooth, rate-limited) ---
+KP_YAW = 1.2           # rad/s per unit of error
+KP_PITCH = 0.9
+DEADBAND = 0.03        # vision mode: ignore tiny offsets (normalised)
+MAX_RATE = 1.5         # rad/s, hard limit on gimbal speed
+SMOOTHING = 0.25       # 0..1, lower = smoother, higher = snappier
+YAW_SIGN = 1           # flip to -1 if the gimbal pans away from the target
+PITCH_SIGN = 1         # flip to -1 if the gimbal tilts away from the target
 
-# --- Shared Frame Buffer for Video Stream ---
-latest_jpeg = None
-active_clients = 0
-frame_condition = threading.Condition()
+# --- Supervisor mode geometry ---
+YAW_OFFSET = 0.0       # radians; the direction the camera faces at yaw=0 (0 = +x axis).
+                       # Try math.pi/2, -math.pi/2 or math.pi if it looks the wrong way.
+AIM_HEIGHT = 0.9       # metres above the skin's origin to aim at (chest height)
+TILT_ENABLED = True    # set False to keep pitch fixed
 
-class MJPEGHandler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        global active_clients
-        self.send_response(200)
-        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0")
-        self.send_header("Pragma", "no-cache")
-        self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=frame")
-        self.end_headers()
+# --- Vision mode: search when the target is lost ---
+LOST_TIMEOUT = 1.5     # seconds without a target before searching
+SEARCH_SPEED = 0.5     # rad/s pan speed while searching
+SEARCH_ENABLED = True
 
-        with frame_condition:
-            active_clients += 1
+# Extra fields for CharacterSkin. Check CharacterSkin.proto for the real
+# field names (e.g. a model selector) and add them here once confirmed.
+SKIN_EXTRA_FIELDS = ""
+SKIN_START = (4.0, -1.5, 0.0)   # x, y, z start position; adjust as needed
 
-        last_sent = None
-        try:
-            while True:
-                with frame_condition:
-                    frame_condition.wait(timeout=1.0)
-                    frame = latest_jpeg
+# Back-and-forth walking
+WALK_SPEED = 0.8       # metres per second
+WALK_DISTANCE = 3.0    # metres between the two turnaround points (along +y)
+FACING_OFFSET = 0.0    # radians; add math.pi/2 or math.pi if the skin faces sideways/backwards
 
-                if frame is None or frame is last_sent:
-                    continue
-
-                self.wfile.write(b"--frame\r\n")
-                self.wfile.write(b"Content-Type: image/jpeg\r\n")
-                self.wfile.write(f"Content-Length: {len(frame)}\r\n\r\n".encode("utf-8"))
-                self.wfile.write(frame)
-                self.wfile.write(b"\r\n")
-                last_sent = frame
-        except (BrokenPipeError, ConnectionResetError, OSError):
-            pass
-        finally:
-            with frame_condition:
-                active_clients = max(0, active_clients - 1)
-
-    def log_message(self, format, *args):
-        pass  # Suppress per-request HTTP logs
-
-class ReusableThreadingHTTPServer(ThreadingHTTPServer):
-    allow_reuse_address = True
-    daemon_threads = True
-
-def encode_jpeg(raw_bgra, width, height, quality):
-    bgra = np.frombuffer(raw_bgra, dtype=np.uint8).reshape((height, width, 4))
-    if HAS_CV2:
-        ok, buf = cv2.imencode(".jpg", bgra[:, :, :3], [cv2.IMWRITE_JPEG_QUALITY, quality])
-        return buf.tobytes() if ok else None
-    else:
-        rgb = bgra[:, :, [2, 1, 0]]
-        buf = io.BytesIO()
-        Image.fromarray(rgb).save(buf, format="JPEG", quality=quality)
-        return buf.getvalue()
-
-# --- 1. Initialize Webots Robot & Camera FIRST ---
-robot = Robot()
+# ---------------- Webots setup ----------------
+robot = Supervisor()
 timestep = int(robot.getBasicTimeStep())
+dt = timestep / 1000.0
+
+
+def spawn_character_skin():
+    """Spawn a CharacterSkin (wrapped in a Robot) at runtime. Returns the node or None.
+
+    A Skin node can only live inside a Robot, so it can't be inserted
+    directly at the top level of the world.
+    """
+    if robot.getFromDef("SKIN_NODE") is not None:
+        return robot.getFromDef("SKIN_NODE")  # already exists, don't duplicate
+    children = robot.getRoot().getField("children")
+    children.importMFNodeFromString(
+        -1,
+        f'DEF SKIN_NODE Robot {{ '
+        f'translation {SKIN_START[0]} {SKIN_START[1]} {SKIN_START[2]} '
+        f'name "skin_holder" '
+        f'controller "<none>" '
+        f'children [ CharacterSkin {{ name "skin" {SKIN_EXTRA_FIELDS} }} ] }}'
+    )
+    node = robot.getFromDef("SKIN_NODE")
+    if node is None:
+        print("Warning: CharacterSkin spawn failed. Check the Webots console.")
+    else:
+        print("CharacterSkin spawned.")
+    return node
+
+
+def walk_pose(t):
+    """Triangle-wave motion along +y. Returns (y_offset, heading_angle)."""
+    period = 2.0 * WALK_DISTANCE
+    phase = (WALK_SPEED * t) % period
+    if phase < WALK_DISTANCE:
+        return phase, math.pi / 2          # walking toward +y
+    return period - phase, -math.pi / 2    # walking back toward -y
+
+
+def wrap_angle(a):
+    """Wrap to [-pi, pi]."""
+    return (a + math.pi) % (2.0 * math.pi) - math.pi
+
 
 camera = robot.getDevice("gimbal_camera")
 camera.enable(timestep)
-cam_width = camera.getWidth()
-cam_height = camera.getHeight()
+W, H = camera.getWidth(), camera.getHeight()
+print(f"Camera resolution: {W}x{H}")
 
 yaw_motor = robot.getDevice("yaw_motor")
 pitch_motor = robot.getDevice("pitch_motor")
+# Motor speed limit is a bit above our own rate limit so the motor never lags the target
+yaw_motor.setVelocity(MAX_RATE * 1.5)
+pitch_motor.setVelocity(MAX_RATE * 1.5)
 
-yaw_motor.setVelocity(1.0)
-pitch_motor.setVelocity(1.0)
 
-# Read Webots motor limits (in Webots, min == max == 0.0 means unlimited)
-yaw_min, yaw_max = yaw_motor.getMinPosition(), yaw_motor.getMaxPosition()
-pitch_min, pitch_max = pitch_motor.getMinPosition(), pitch_motor.getMaxPosition()
-print(f"Yaw limits:   min={yaw_min:.2f}, max={yaw_max:.2f}")
-print(f"Pitch limits: min={pitch_min:.2f}, max={pitch_max:.2f}")
+def limits(motor):
+    lo, hi = motor.getMinPosition(), motor.getMaxPosition()
+    if lo == hi:                      # unlimited joint
+        return -math.pi, math.pi
+    return lo, hi
 
-def clamp(value, min_val, max_val):
-    if max_val > min_val:  # Only clamp if Webots limits are actually set
-        return max(min_val, min(max_val, value))
-    return value
 
-robot.step(timestep)
+yaw_lo, yaw_hi = limits(yaw_motor)
+pitch_lo, pitch_hi = limits(pitch_motor)
+yaw_target = 0.0
+pitch_target = 0.0
+yaw_rate = 0.0       # smoothed rates (rad/s)
+pitch_rate = 0.0
+search_dir = 1.0
 
-# --- 2. Start Localhost MJPEG Stream Server ---
-http_server = ReusableThreadingHTTPServer((STREAM_HOST, STREAM_PORT), MJPEGHandler)
-stream_thread = threading.Thread(target=http_server.serve_forever, daemon=True)
-stream_thread.start()
-print(f"Camera stream live at: http://{STREAM_HOST}:{STREAM_PORT}")
 
-# --- 3. MQTT Callbacks ---
-def on_connect(client, userdata, flags, rc):
-    if rc == 0:
-        print(f"Connected to EMQX broker at {BROKER}:{PORT}")
-        client.subscribe(TOPIC)
-        print(f"Subscribed to topic: {TOPIC}")
-    else:
-        print(f"Failed to connect to EMQX, return code: {rc}")
+def clamp(v, lo, hi):
+    return max(lo, min(hi, v))
 
-def on_message(client, userdata, msg):
-    global target_yaw, target_pitch, position_updated
-    payload = msg.payload.decode("utf-8").strip()
-    print(f"Received [{msg.topic}]: {payload}")
 
-    # Optional JSON support for jumping directly to an angle: {"yaw": 1.0, "pitch": 0.5}
-    if ":" in payload:
-        try:
-            data = json.loads(payload)
-            if isinstance(data, dict):
-                if "yaw" in data:
-                    target_yaw = clamp(float(data["yaw"]), yaw_min, yaw_max)
-                if "pitch" in data:
-                    target_pitch = clamp(float(data["pitch"]), pitch_min, pitch_max)
-                position_updated = True
-                return
-        except (json.JSONDecodeError, ValueError, TypeError) as e:
-            print(f"Invalid JSON format: {e}")
-            return
+# Own position (the gimbal base) for supervisor-mode aiming
+self_node = robot.getSelf()
+self_pos = self_node.getField("translation")
 
-    # Parse "{left, up}" style incremental commands
-    cleaned = payload.strip("{} ").lower()
-    if not cleaned:
-        return
+# Pedestrian arm (first pedestrian only; the second is DEF PEDESTRIAN_2)
+pedestrian = robot.getFromDef("PEDESTRIAN")
+right_arm = right_lower_arm = None
+if pedestrian is not None:
+    right_arm = pedestrian.getField("rightArmAngle")
+    right_lower_arm = pedestrian.getField("rightLowerArmAngle")
+else:
+    print("Warning: DEF 'PEDESTRIAN' not found.")
+hand_raised = False
+character_skin = None
+skin_translation = None
+skin_rotation = None
+skin_spawned = False
 
-    commands = [cmd.strip() for cmd in cleaned.split(",") if cmd.strip()]
+# ---------------- Start your pipeline ----------------
+gs = Global()
+gs.running = True
+process_thread = start_process_thread(gs)
+output_thread = start_output_thread(gs)
 
-    for cmd in commands:
-        if cmd == "left":
-            target_yaw = clamp(target_yaw + YAW_STEP, yaw_min, yaw_max)
-        elif cmd == "right":
-            target_yaw = clamp(target_yaw - YAW_STEP, yaw_min, yaw_max)
-        elif cmd == "up":
-            target_pitch = clamp(target_pitch + PITCH_STEP, pitch_min, pitch_max)
-        elif cmd == "down":
-            target_pitch = clamp(target_pitch - PITCH_STEP, pitch_min, pitch_max)
-        elif cmd == "center":
-            target_yaw = 0.0
-            target_pitch = 0.0
-        else:
-            print(f"Unrecognized direction '{cmd}' in message: {payload}")
-            continue
-        position_updated = True
+frame_number = 0
+step_count = 0
+latest_rgb = None
+last_seen_time = robot.getTime()
+last_debug = 0.0
 
-    print(f"Target -> yaw: {target_yaw:.2f} rad, pitch: {target_pitch:.2f} rad")
+print(f"Tracking mode: {TRACK_MODE}")
 
-# --- 4. Connect to EMQX Asynchronously ---
-try:
-    mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
-except AttributeError:
-    mqtt_client = mqtt.Client()
+# ---------------- Main loop ----------------
+while robot.step(timestep) != -1:
+    step_count += 1
+    now = robot.getTime()
 
-if USERNAME and PASSWORD:
-    mqtt_client.username_pw_set(USERNAME, PASSWORD)
+    # Spawn the skin once, after the simulation has started
+    if not skin_spawned:
+        character_skin = spawn_character_skin()
+        skin_spawned = True
+        if character_skin is not None:
+            skin_translation = character_skin.getField("translation")
+            skin_rotation = character_skin.getField("rotation")
 
-mqtt_client.on_connect = on_connect
-mqtt_client.on_message = on_message
+    # Walk the skin back and forth
+    if skin_translation is not None:
+        y_off, heading = walk_pose(now)
+        skin_translation.setSFVec3f(
+            [SKIN_START[0], SKIN_START[1] + y_off, SKIN_START[2]]
+        )
+        skin_rotation.setSFRotation([0, 0, 1, heading + FACING_OFFSET])
 
-mqtt_client.connect_async(BROKER, PORT, keepalive=60)
-mqtt_client.loop_start()
+    # Raise pedestrian hand once
+    if not hand_raised and now >= RAISE_HAND_AT and right_arm is not None:
+        right_arm.setSFFloat(-2.8)
+        right_lower_arm.setSFFloat(-0.3)
+        hand_raised = True
 
-print("--- Gimbal MQTT Controller Active ---")
+    # 1) Webots camera -> input queue (BGRA -> RGB)
+    raw = camera.getImage()
+    if raw and step_count % FRAME_EVERY == 0 and gs.input_stack.qsize() < 2:
+        bgra = np.frombuffer(raw, np.uint8).reshape((H, W, 4))
+        rgb = cv2.cvtColor(bgra, cv2.COLOR_BGRA2RGB)
+        gs.input_stack.put((frame_number, rgb))
+        frame_number += 1
 
-# --- 5. Main Simulation Loop ---
-try:
-    while robot.step(timestep) != -1:
-        if position_updated:
-            yaw_motor.setPosition(target_yaw)
-            pitch_motor.setPosition(target_pitch)
-            position_updated = False
+    # 2) Show the newest annotated frame from processing.py
+    try:
+        while True:
+            _, latest_rgb = gs.output_stack.get_nowait()
+            gs.output_stack.task_done()
+    except queue.Empty:
+        pass
 
-        # Only encode JPEG frames while at least one client is watching
-        if active_clients > 0:
-            raw_image = camera.getImage()
-            if raw_image is not None:
-                jpeg_bytes = encode_jpeg(raw_image, cam_width, cam_height, JPEG_QUALITY)
-                if jpeg_bytes:
-                    with frame_condition:
-                        latest_jpeg = jpeg_bytes
-                        frame_condition.notify_all()
-finally:
-    http_server.shutdown()
-    http_server.server_close()
-    mqtt_client.loop_stop()
-    mqtt_client.disconnect()
+    if latest_rgb is not None:
+        cv2.imshow("Gimbal Tracking", cv2.cvtColor(latest_rgb, cv2.COLOR_RGB2BGR))
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            break
+
+    # 3) Gimbal control
+    want_yaw_rate = 0.0
+    want_pitch_rate = 0.0
+
+    if TRACK_MODE == "supervisor":
+        if skin_translation is not None:
+            tx, ty, tz = skin_translation.getSFVec3f()
+            bx, by, bz = self_pos.getSFVec3f()
+            dx, dy = tx - bx, ty - by
+            horiz = math.hypot(dx, dy)
+
+            desired_yaw = YAW_OFFSET + YAW_SIGN * math.atan2(dy, dx)
+            yaw_err = wrap_angle(desired_yaw - yaw_target)
+            want_yaw_rate = KP_YAW * yaw_err
+
+            if TILT_ENABLED:
+                desired_pitch = PITCH_SIGN * math.atan2((tz + AIM_HEIGHT) - bz, horiz)
+                desired_pitch = clamp(desired_pitch, pitch_lo, pitch_hi)
+                want_pitch_rate = KP_PITCH * (desired_pitch - pitch_target)
+
+    else:  # "vision"
+        center = gs.center_point
+        if center is not None:
+            last_seen_time = now
+            err_x = (center[0] - W / 2) / (W / 2)   # + = target right of centre
+            err_y = (center[1] - H / 2) / (H / 2)   # + = target below centre
+            want_yaw_rate = 0.0 if abs(err_x) < DEADBAND else -YAW_SIGN * KP_YAW * err_x
+            want_pitch_rate = 0.0 if abs(err_y) < DEADBAND else -PITCH_SIGN * KP_PITCH * err_y
+        elif SEARCH_ENABLED and (now - last_seen_time) > LOST_TIMEOUT:
+            # Lost the target for a while: slowly pan back and forth to find them
+            if yaw_target >= yaw_hi - 0.05:
+                search_dir = -1.0
+            elif yaw_target <= yaw_lo + 0.05:
+                search_dir = 1.0
+            want_yaw_rate = search_dir * SEARCH_SPEED
+
+        # Debug once per second so you can see whether the detector locks on
+        if now - last_debug > 1.0:
+            print(f"[t={now:5.1f}] center_point = {center}")
+            last_debug = now
+
+    want_yaw_rate = clamp(want_yaw_rate, -MAX_RATE, MAX_RATE)
+    want_pitch_rate = clamp(want_pitch_rate, -MAX_RATE, MAX_RATE)
+
+    # Low-pass filter the rate so starts/stops are gentle, like a real gimbal
+    yaw_rate += SMOOTHING * (want_yaw_rate - yaw_rate)
+    pitch_rate += SMOOTHING * (want_pitch_rate - pitch_rate)
+
+    yaw_target = clamp(yaw_target + yaw_rate * dt, yaw_lo, yaw_hi)
+    pitch_target = clamp(pitch_target + pitch_rate * dt, pitch_lo, pitch_hi)
+
+    yaw_motor.setPosition(yaw_target)
+    pitch_motor.setPosition(pitch_target)
+
+# ---------------- Shutdown ----------------
+gs.running = False
+process_thread.join()
+output_thread.join()
+cv2.destroyAllWindows()
