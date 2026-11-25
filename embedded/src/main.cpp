@@ -26,6 +26,8 @@ void setup() {
   while (!Serial && millis() < 2000) {
   }
 
+  motorsBegin();
+
   // Setup: calls the mqtt server and designated port in MQTT.cpp
   setup_wifi();
   client.setServer(mqtt_server, mqtt_port);
@@ -49,7 +51,13 @@ void loop() {
     reconnect();
   }
   client.loop();
-
+  while (espClient.available()) {
+    client.loop();
+  }
+  if (newTarget) {
+    newTarget = false;
+    MovePos(targetYaw, targetPitch);
+  }
 
   ImuReading r;
   if (!imu.read(r)) {
@@ -65,9 +73,9 @@ void loop() {
   filter.update(r, (now - last) / 1e6f);
   last = now;
 
-  // Print at most every 10 ms so serial doesn't slow the loop down.
+  // Print at most every 200 ms so serial doesn't slow the loop down.
   static unsigned long lastPrint = 0;
-  if (millis() - lastPrint >= 10) {
+  if (millis() - lastPrint >= 200) {
     lastPrint = millis();
     Serial.printf("accel (m/s^2): %7.2f %7.2f %7.2f  |a| %6.2f   gyro (deg/s): "
                   "%8.2f %8.2f %8.2f   tilt %7.2f  pan %7.2f\n",
