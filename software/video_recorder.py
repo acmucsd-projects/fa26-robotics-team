@@ -37,7 +37,7 @@ class VideoRecorder:
                 return
 
             if self._writer is None:
-                folder = Path("recordings")
+                folder = Path("software/recordings")
                 folder.mkdir(exist_ok=True)
                 timestamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
                 path = folder / f"recording_{timestamp}.mp4"
