@@ -19,6 +19,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
 	for (unsigned int i = 0; i < length; i++) {
 		msg += (char)payload[i];
 	}
+	Serial.println(msg);
 
 	int commaIdx = msg.indexOf(',');
 
