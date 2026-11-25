@@ -6,6 +6,7 @@ from input_process import start_input_thread
 # from processing import start_process_thread
 from processing_with_tracking import start_process_thread
 from output_process import start_output_thread
+from video_recorder import VideoRecorder
 
 class Main():
     def __init__(self):
@@ -42,10 +43,11 @@ class Main():
 def main():
     global_state = Global()
     global_state.running = True
+    recorder = VideoRecorder()
 
     process_thread = start_process_thread(global_state)
     # output_thread = start_output_thread(global_state)
-    input_thread = start_input_thread(global_state)
+    input_thread = start_input_thread(global_state, recorder)
 
     win_name = "RF-DETR Live Feed"
     cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)  # Allows resizing and maximizing
@@ -90,16 +92,31 @@ def main():
 
             # Handle keyboard input on every iteration
             # Optional keyboard toggle with 'f'
+
+            key = cv2.waitKey(1) & 0xFF
+
+            if key == ord("r"):
+                recorder.start()
+            elif key == ord("p"):
+                recorder.toggle_pause()
+            elif key == ord("s"):
+                recorder.stop()
+            elif key == ord("q"):
+                global_state.running = False
+                break
+
             if cv2.waitKey(1) & 0xFF == ord("f"):
                 is_fullscreen = not is_fullscreen
                 prop = cv2.WINDOW_FULLSCREEN if is_fullscreen else cv2.WINDOW_NORMAL
                 cv2.setWindowProperty(win_name, cv2.WND_PROP_FULLSCREEN, prop)
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                global_state.running = False
-                break
+            # if cv2.waitKey(1) & 0xFF == ord("q"):
+            #     global_state.running = False
+            #     break
 
     finally:
         global_state.running = False
+        recorder.stop()
+
 
         input_thread.join()
         process_thread.join()

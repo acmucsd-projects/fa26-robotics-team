@@ -3,9 +3,6 @@ import threading
 import queue
 from global_state import Global
 
-jpeg_queue = queue.Queue(maxsize=1)
-
-
 def put_latest(target_queue, item):
     try:
         target_queue.put_nowait(item)
@@ -20,7 +17,7 @@ def put_latest(target_queue, item):
 
         target_queue.put_nowait(item)
 
-def threadTarget(global_state: Global):
+def threadTarget(global_state, recorder):
     """
     Detect a hand in the top third of the frame to initialize
     the gimbal target, then stream frames to the processing queue.
@@ -36,6 +33,7 @@ def threadTarget(global_state: Global):
     cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
 
     print(f"FPS: {cap.get(cv2.CAP_PROP_FPS)}")
+    recording_fps = cap.get(cv2.CAP_PROP_FPS)
 
     try:
         while cap.isOpened() and global_state.running:
@@ -47,6 +45,7 @@ def threadTarget(global_state: Global):
             # global_state.preview_stack.put((frame_number, frame.copy()))
 
             if frame_number % 1 == 0:
+                recorder.write(frame, recording_fps)
                 frame_rgb = cv2.cvtColor(
                     frame,
                     cv2.COLOR_BGR2RGB
@@ -64,10 +63,10 @@ def threadTarget(global_state: Global):
         global_state.running = False
 
 
-def start_input_thread(global_state: Global):
+def start_input_thread(global_state, recorder):
     thread = threading.Thread(
         target=threadTarget,
-        args=(global_state,),
+        args=(global_state,recorder),
         daemon=True,
     )
 

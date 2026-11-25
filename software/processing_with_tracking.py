@@ -29,8 +29,8 @@ MAX_VELOCITY_SAMPLE_GAP_S = 0.25
 REACQUIRE_RADIUS_PX = 100
 
 # Set these to the FOV of the camera stream used for detection.
-CAMERA_HORIZONTAL_FOV_DEG = 60.0  # Example value. Replace with your camera's FOV.
-CAMERA_VERTICAL_FOV_DEG = None  # Infer from square pixels unless measured.
+CAMERA_HORIZONTAL_FOV_DEG = 90.0  # Example value. Replace with your camera's FOV.
+CAMERA_VERTICAL_FOV_DEG = 45.0  # Infer from square pixels unless measured.
 kinematics = GimbalKinematics(CAMERA_HORIZONTAL_FOV_DEG, CAMERA_VERTICAL_FOV_DEG)
 
 
