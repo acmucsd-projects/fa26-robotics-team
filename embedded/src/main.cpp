@@ -117,7 +117,7 @@ void setup() {
   tiltCenter = (MIN2 + MAX2) / 2;
   panTarget = panCenter;    // start where motor.cpp left the servos (no jump)
   tiltTarget = tiltCenter;
-
+//assumption of MQTT format and that the MQTT command is used to move the gimbal. The values are stored in mqttX and mqttY, and mqttHasCmd indicates if a new command has been received.
 #ifdef USE_MQTT
   setup_wifi();                               // NEW: mqtt.cpp (waits until Wi-Fi connects)
   client.setServer("broker.emqx.io", 1883);   // NEW: which broker
