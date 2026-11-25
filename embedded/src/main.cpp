@@ -26,6 +26,7 @@ void setup() {
   while (!Serial && millis() < 2000) {
   }
 
+  // Setup: calls the mqtt server and designated port in MQTT.cpp
   setup_wifi();
   client.setServer(mqtt_server, mqtt_port);
   client.setCallback(callback);
