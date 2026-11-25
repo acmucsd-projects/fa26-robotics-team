@@ -18,7 +18,10 @@ from target_tracker import TargetTracker
 from server import start_server, publish_frame
 
 import paho.mqtt.client as mqtt
+from kinematics import PinholeCamera
 
+HFOV_DEG = 70.0   # placeholder: calibrate for your phone stream
+camera = None #this is new for testing mqtt
 
 BASE_DIR = Path(__file__).resolve().parent
 MODEL_PATH = BASE_DIR / "Arnavrfdetr_2.pth"
@@ -54,9 +57,20 @@ client.connect(BROKER, PORT, keepalive=60)
 client.loop_start()
 
 
-def send(center):
+#def send(center):
     # Fire and forget: don't block the processing thread waiting for the broker
-    client.publish(TOPIC, f"{center[0]},{center[1]}", qos=0)
+ #   client.publish(TOPIC, f"{center[0]},{center[1]}", qos=0)
+
+#this is for mqtt and inverse kinematics
+def send(center, width, height):
+    """center is in full-frame pixels. Publishes degrees of error to the gimbal."""
+    global camera
+    if camera is None or camera.cx != width / 2 or camera.cy != height / 2:
+        camera = PinholeCamera(width, height, HFOV_DEG)
+
+    d_pan, d_tilt = camera.pixel_to_angles(*center)
+    client.publish(TOPIC, f"{d_pan:.3f},{d_tilt:.3f}", qos=0)
+    return d_pan, d_tilt
 
 
 def distance(a, b):
@@ -331,10 +345,10 @@ def threadTarget(global_state):
                         tracker.reset()
                         misses = 0
 
-                        if SIM_AUTO_LOCK:
+                    if SIM_AUTO_LOCK:
                             # Go back to acquiring a new target
                             acquisition_finished = False
-                        else:
+                    else:
                             target_lost = True
             else:
                 target_lost = True
@@ -343,9 +357,14 @@ def threadTarget(global_state):
                 center = get_aim_point(tracker.target_box)
 
             global_state.center_point = center
+            angles = None
             if center is not None:
-                send(center)
+                angles = send(center, width, height)
 
+           # global_state.center_point = center
+            #if center is not None:
+             #   send(center)
+        
             # ---- Drawing ----
             if tracker.target_box is not None and center is not None:
                 x1, y1, x2, y2 = map(int, tracker.target_box)
@@ -374,7 +393,17 @@ def threadTarget(global_state):
                     0.7,
                     (255, 255, 0),
                     2
-                )
+                ) #adding below to test for inverse kinematics and mqtt
+                if angles is not None:
+                    cv2.putText(
+                        frame,
+                        f"pan {angles[0]:+.1f}  tilt {angles[1]:+.1f}",
+                        (x1, min(y2 + 25, height - 10)),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.7,
+                        (255, 255, 0),
+                        2
+                    )
             else:
                 for box, conf in zip(
                     detections.xyxy,
