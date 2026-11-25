@@ -8,5 +8,5 @@
 
 
 
-void MovePos(int id, int position);
-
+void MovePos(float yaw, float pitch);
+void motorsBegin();

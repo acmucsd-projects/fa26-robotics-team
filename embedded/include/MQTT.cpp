@@ -1,5 +1,6 @@
 #include <PubSubClient.h>
 #include <WiFi.h>
+#include <motor.hpp>
 
 // Wi-Fi (hotspot) credentials
 constexpr const char *userName = Username;
@@ -11,13 +12,26 @@ constexpr int mqtt_port = 1883;
 constexpr const char *subscribe_topic = "gimbal/commands";
 WiFiClient espClient;
 PubSubClient client(espClient);
+float targetYaw = 0;
+float targetPitch = 0;
+bool newTarget = false;
 
 void callback(char *topic, byte *payload, unsigned int length) {
-  Serial.print("message received [");
-  Serial.print(topic);
-  Serial.print("]:");
-  Serial.write(payload, length);
-  Serial.println();
+	String msg;
+	msg.reserve(length);
+	for (unsigned int i = 0; i < length; i++) {
+		msg += (char)payload[i];
+	}
+
+	int commaIdx = msg.indexOf(',');
+
+	if (commaIdx == -1) {
+    	Serial.println("Invalid payload: missing comma");
+    	return;
+ 	}
+	targetYaw = msg.substring(0, commaIdx).toFloat();
+	targetPitch = msg.substring(commaIdx + 1).toFloat();
+	newTarget = true;
 }
 
 // Wifi Setup
