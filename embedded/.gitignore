@@ -6,3 +6,4 @@
 .vscode
 .zed
 .DS_Store
+secrets.ini

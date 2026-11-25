@@ -57,7 +57,7 @@ void motorsBegin() {
 	Serial.println(st.ReadPos(SERVO1));
 	Serial.println(st.ReadPos(SERVO2));
 
-	// these are known-safe values
+	// this for loop moves the gimbal as smoothly as a differentiable function brochacho
 
 	for (int i = -100; i <= 100; i++){
 		MovePos(i*0.9, i*0.45);
