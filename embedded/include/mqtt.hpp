@@ -7,8 +7,6 @@ struct Offset {
   float y;
 };
 
-// True if a NEW offset arrived since the last call. Never blocks for long.
-// Also starts Wi-Fi and the MQTT connection on the first call and keeps them
-// alive (reconnects at most every few seconds), so main.cpp just calls this
-// every loop.
+// True if a NEW offset arrived since the last call. Never blocks.
+// fake_offset.cpp now; mqtt_offset.cpp later, same signature.
 bool pollOffset(Offset &out);
