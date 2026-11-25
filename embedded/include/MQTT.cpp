@@ -14,12 +14,17 @@ WiFiClient espClient;
 PubSubClient client(espClient);
 
 void callback(char *topic, byte *payload, unsigned int length) {
+  	Serial.print("message received [");
+  	Serial.print(topic);
+  	Serial.print("]:");
+ 	Serial.write(payload, length);
+
 	String msg;
 	msg.reserve(length);
 	for (unsigned int i = 0; i < length; i++) {
 		msg += (char)payload[i];
 	}
-	Serial.println(msg);
+  	Serial.println(msg);
 
 	int commaIdx = msg.indexOf(',');
 
@@ -28,6 +33,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     	return;
  	}
 	MovePos(msg.substring(0, commaIdx).toFloat(), msg.substring(commaIdx + 1).toFloat());
+  	Serial.println();
 }
 
 // Wifi Setup

@@ -66,9 +66,9 @@ void loop() {
   filter.update(r, (now - last) / 1e6f);
   last = now;
 
-  // Print at most every 200 ms so serial doesn't slow the loop down.
+  // Print at most every 10 ms so serial doesn't slow the loop down.
   static unsigned long lastPrint = 0;
-  if (millis() - lastPrint >= 200) {
+  if (millis() - lastPrint >= 10) {
     lastPrint = millis();
     Serial.printf("accel (m/s^2): %7.2f %7.2f %7.2f  |a| %6.2f   gyro (deg/s): "
                   "%8.2f %8.2f %8.2f   tilt %7.2f  pan %7.2f\n",
