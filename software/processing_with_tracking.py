@@ -45,35 +45,36 @@ client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
 client.connect(BROKER, PORT, keepalive=60)
 client.loop_start()
 
-# future iterations using 2D inverse kinematics will be send over the form f'angle for bottom motor, angle for top motor'
-def send(center, width, height):
-    if center[0] != width//2 and center[1] != height//2:
-        if center[0] < width//2 and center[1] < height//2:
-            client.publish(TOPIC, f'up,left', qos=1)
-            print(f"Move Gimbal Up Left: {center[0]},{center[1]}")
+# # future iterations using 2D inverse kinematics will be send over the form f'angle for bottom motor, angle for top motor'
+# def send(center, width, height):
+#     if center[0] != width//2 and center[1] != height//2:
+#         if center[0] < width//2 and center[1] < height//2:
+#             client.publish(TOPIC, f'up,left', qos=1)
+#             print(f"Move Gimbal Up Left: {center[0]},{center[1]}")
 
-        elif center[0] > width//2 and center[1] > height//2:
-            client.publish(TOPIC, f'down,right', qos=1)
-            print(f"Move Gimbal Down Right: {center[0]},{center[1]}")
+#         elif center[0] > width//2 and center[1] > height//2:
+#             client.publish(TOPIC, f'down,right', qos=1)
+#             print(f"Move Gimbal Down Right: {center[0]},{center[1]}")
 
-        elif center[0] < width//2 and center[1] > height//2:
-            client.publish(TOPIC, f'down,left', qos=1)
-            print(f"Move Gimbal Down Left: {center[0]},{center[1]}")
+#         elif center[0] < width//2 and center[1] > height//2:
+#             client.publish(TOPIC, f'down,left', qos=1)
+#             print(f"Move Gimbal Down Left: {center[0]},{center[1]}")
 
-        elif center[0] > width//2 and center[1] < height//2:
-            client.publish(TOPIC, f'up,right', qos=1)
-            print(f"Move Gimbal Up Right: {center[0]},{center[1]}")
+#         elif center[0] > width//2 and center[1] < height//2:
+#             client.publish(TOPIC, f'up,right', qos=1)
+#             print(f"Move Gimbal Up Right: {center[0]},{center[1]}")
 
-    # # Send the target center without waiting for the MQTT acknowledgment
-    # info = client.publish(TOPIC, f'{center[0]},{center[1]}', qos=1)
-    # # info.wait_for_publish()
-    # print(f'Sent center point: {center[0]},{center[1]}')
+#     # # Send the target center without waiting for the MQTT acknowledgment
+#     # info = client.publish(TOPIC, f'{center[0]},{center[1]}', qos=1)
+#     # # info.wait_for_publish()
+#     # print(f'Sent center point: {center[0]},{center[1]}')
 
 def send_kin(center, width, height):
     # Wire order is bottom motor (yaw), then top motor (pitch).
     # Values are camera-relative corrections in degrees, positive right and up.
     yaw_deg, pitch_deg = kinematics.angles_for_pixel(center, width, height)
     client.publish(TOPIC, f'{yaw_deg:.3f},{pitch_deg:.3f}', qos=1)
+    print(f"[PROCESSING] yaw_angle: {yaw_deg}, pitch_deg: {pitch_deg}")
 
 def is_open_raised_hand(lm):
     # Check that all four fingers are extended upward
@@ -115,23 +116,17 @@ def make_roi(box, width, height):
     return x, y, ROI_W, ROI_H
 
 
-def draw_detections(frame, detections):
-    # Draw green boxes around detected people before locking or while searching
+def draw_detections(frame, detections, detected_box=None):
+    # The worker draws on RGB frames, so these colors are in RGB order.
+    target_coords = None if detected_box is None else tuple(detected_box)
     for box, conf in zip(detections.xyxy, detections.confidence):
         x1, y1, x2, y2 = map(int, box)
-        cv2.rectangle(frame, (x1, y1), (x2, y2), (0, 255, 0), 2)
-        cv2.putText(frame, f'Person: {conf:.2f}',
-                    (x1, max(y1 - 10, 15)), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.5, (0, 255, 0), 2)
-
-
-def draw_target(frame, box, center):
-    # Highlight the locked person and show the center used for gimbal control
-    x1, y1, x2, y2 = map(int, box)
-    cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 255, 0), 3)
-    cv2.circle(frame, center, 7, (255, 0, 0), -1)
-    cv2.putText(frame, 'TARGET LOCKED', (x1, max(y1 - 30, 20)),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 0), 2)
+        if tuple(box) == target_coords:
+            yellow = (255, 255, 0)
+            cv2.rectangle(frame, (x1, y1), (x2, y2), yellow, 3)
+            cv2.circle(frame, box_center(box), 7, (255, 0, 0), -1)
+            cv2.putText(frame, 'TARGET LOCKED', (x1, max(y1 - 30, 20)),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.7, yellow, 2)
 
 
 def box_center(box):
@@ -227,11 +222,12 @@ def open_hand_landmarker():
 
 def threadTarget(global_state):
     motion = None
+    recovering = False
     lost_target_center = None
     hands = None
     last_timestamp = -1
 
-    try:
+    try:        
         while global_state.running or not global_state.input_stack.empty():
             try:
                 packet = global_state.input_stack.get(timeout=0.1)
@@ -259,16 +255,14 @@ def threadTarget(global_state):
                 motion = None
                 print('[PROCESSING] Target lost. Searching near the last known center.')
 
-            predicted_box = None
-            roi = None
             input_frame = frame
             rx = ry = 0
-            if motion is not None:
-                predicted_box = motion.predict(captured_at)
-                if elapsed < FULL_FRAME_AFTER_S and width >= ROI_W and height >= ROI_H:
-                    roi = make_roi(predicted_box, width, height)
-                    rx, ry, rw, rh = roi
-                    input_frame = frame[ry:ry + rh, rx:rx + rw]
+            roi = None
+            can_crop = width >= ROI_W and height >= ROI_H
+            if motion is not None and elapsed < FULL_FRAME_AFTER_S and can_crop:
+                roi = make_roi(motion.last_box, width, height)
+                rx, ry, rw, rh = roi
+                input_frame = frame[ry:ry + rh, rx:rx + rw]
 
             detections = model.predict(input_frame, threshold=DETECTION_THRESHOLD)
             detections = detections[detections.class_id == PERSON_CLASS_ID]
@@ -276,13 +270,23 @@ def threadTarget(global_state):
                 detections.xyxy[:, [0, 2]] += rx
                 detections.xyxy[:, [1, 3]] += ry
 
-            matched_box = None
+            detected_box = None
+            predicted_box = None
             if motion is not None:
-                matched_box = motion.match(detections.xyxy, predicted_box, elapsed)
+                if recovering or elapsed >= FULL_FRAME_AFTER_S:
+                    predicted_box = motion.predict(captured_at)
+                    detected_box = motion.match(detections.xyxy, predicted_box, elapsed)
+                else:
+                    # Select fresh coordinates near the last observed position.
+                    detected_box = closest_box_to_center(
+                        detections.xyxy, box_center(motion.last_box)
+                    )
+                recovering = detected_box is None
             elif lost_target_center is not None:
-                matched_box = closest_box_to_center(detections.xyxy, lost_target_center)
-                if matched_box is not None:
+                detected_box = closest_box_to_center(detections.xyxy, lost_target_center)
+                if detected_box is not None:
                     motion = TargetMotion()
+                    recovering = False
                     lost_target_center = None
                     print('[PROCESSING] Target reacquired near the last known center.')
             else:
@@ -306,33 +310,37 @@ def threadTarget(global_state):
                         and box[0] <= px <= box[2] and box[1] <= py <= box[3]
                     ]
                     if len(containing) == 1:
-                        matched_box = containing[0]
+                        detected_box = containing[0]
                         motion = TargetMotion()
                         hands.close()
                         hands = None
                         print('[PROCESSING] Target locked. MediaPipe stopped.')
                         break
 
-            if matched_box is not None:
-                motion.observe(matched_box, captured_at)
-                center = tuple(round(value) for value in box_center(matched_box))
+            if detected_box is not None:
+                motion.observe(detected_box, captured_at)
+                center = box_center(detected_box)
                 global_state.center_point = center
-                # send(center, width, height)
                 send_kin(center, width, height)
-                draw_target(frame, matched_box, center)
+                if can_crop:
+                    roi = make_roi(detected_box, width, height)
             else:
                 global_state.center_point = None
+
+            if detected_box is None and motion is not None:
                 if predicted_box is None:
-                    draw_detections(frame, detections)
-                else:
-                    x1, y1, x2, y2 = map(round, predicted_box)
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2)
-                    cv2.putText(frame, 'PREDICTED', (max(0, x1), max(15, y1 - 8)),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+                    predicted_box = motion.predict(captured_at)
+                x1, y1, x2, y2 = map(round, predicted_box)
+                cv2.rectangle(frame, (x1, y1), (x2, y2), (255, 0, 255), 2)
+                cv2.circle(frame, box_center(predicted_box), 5, (255, 0, 0), -1)
+                cv2.putText(frame, 'PREDICTED', (max(0, x1), max(15, y1 - 8)),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 255), 2)
+            else:
+                draw_detections(frame, detections, detected_box)
 
             if roi is not None:
-                _, _, rw, rh = roi
-                cv2.rectangle(frame, (rx, ry), (rx + rw - 1, ry + rh - 1), (0, 0, 255), 1)
+                x, y, rw, rh = roi
+                cv2.rectangle(frame, (x, y), (x + rw - 1, y + rh - 1), (0, 0, 255), 1)
 
             global_state.output_stack.put((frame_number, frame))
 
