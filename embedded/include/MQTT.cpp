@@ -12,9 +12,6 @@ constexpr int mqtt_port = 1883;
 constexpr const char *subscribe_topic = "gimbal/commands";
 WiFiClient espClient;
 PubSubClient client(espClient);
-float targetYaw = 0;
-float targetPitch = 0;
-bool newTarget = false;
 
 void callback(char *topic, byte *payload, unsigned int length) {
 	String msg;
@@ -29,9 +26,7 @@ void callback(char *topic, byte *payload, unsigned int length) {
     	Serial.println("Invalid payload: missing comma");
     	return;
  	}
-	targetYaw = msg.substring(0, commaIdx).toFloat();
-	targetPitch = msg.substring(commaIdx + 1).toFloat();
-	newTarget = true;
+	MovePos(msg.substring(0, commaIdx).toFloat(), msg.substring(commaIdx + 1).toFloat());
 }
 
 // Wifi Setup

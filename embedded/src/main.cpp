@@ -51,13 +51,6 @@ void loop() {
     reconnect();
   }
   client.loop();
-  while (espClient.available()) {
-    client.loop();
-  }
-  if (newTarget) {
-    newTarget = false;
-    MovePos(targetYaw, targetPitch);
-  }
 
   ImuReading r;
   if (!imu.read(r)) {
