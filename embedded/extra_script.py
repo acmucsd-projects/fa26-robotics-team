@@ -12,4 +12,4 @@ def generate_compiledb(source, target, env):
     env.Execute(f"pio run -e {env['PIOENV']} -t compiledb")
 
 
-env.AddPostAction("$BUILD_DIR/${PROGNAME}.elf", generate_compiledb)
+env.AddPreAction("$BUILD_DIR/${PROGNAME}.elf", generate_compiledb)

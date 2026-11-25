@@ -6,6 +6,7 @@
 #include "Vector.hpp"
 #include <Arduino.h>
 #include <DFRobot_BMI160.h>
+#include <cstddef>
 #include <cstdint>
 
 // I2C pins and address of the BMI160
@@ -17,10 +18,12 @@ constexpr uint8_t IMU_SCL = 7;
 constexpr uint8_t IMU_ADDR = 0x68;
 
 // Raw readings are 16-bit ticks (-32768..32767). These turn ticks into units.
-// Accel range is +-4g, so 32768 / 4 = 8192 ticks per g.
-// Gyro range is +-2000 deg/s, so 32768 / 2000 = 16.4 ticks per deg/s.
-constexpr float ACCEL_LSB_PER_G = 8192.0F;
-constexpr float GYRO_LSB_PER_DPS = 16.4F;
+
+// Accel range is +-4g.
+constexpr float ACCEL_LSB_PER_G = 65536.0F / 8.0F;
+
+// Gyro range is +-2000 deg/s.
+constexpr float GYRO_LSB_PER_DPS = 65536.0F / 4000.0F;
 
 class Imu {
   static bool writeReg(uint8_t reg, uint8_t value);

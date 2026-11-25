@@ -3,6 +3,7 @@
 #include "Matrix.hpp"
 #include "Vector.hpp"
 #include <Wire.h>
+#include <cstddef>
 #include <cstdint>
 
 Imu::Imu(Vec3f gyroBias, Vec3f accelBias, Vec3f accelScale, Mat3f orientation)
