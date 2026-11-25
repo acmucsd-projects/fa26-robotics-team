@@ -3,8 +3,10 @@
 .vscode/c_cpp_properties.json
 .vscode/launch.json
 .vscode/ipch
-venv/
-.venv/
+software/venv/
+software/.venv/
 env/
 ENV/
 .DS_Store
+embedded/.pio/
+embedded/.vscode/
