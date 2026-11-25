@@ -9,7 +9,7 @@ SMS_STS st;
 #define SERVO_RX 15
 #define SERVO_TX 16
 
-const int SPEED = 500;
+const int SPEED = 2000;
 int MIN1 = 500;
 int MAX1 = 500;
 int MIN2 = 500;
