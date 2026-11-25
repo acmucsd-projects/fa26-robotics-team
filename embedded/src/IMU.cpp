@@ -44,11 +44,7 @@ void Imu::averageRaw(Vec3<float> &gyro, Vec3<float> &accel, int samples) {
         sum[i] += d[i];
       n++;
     }
-<<<<<<< HEAD
     // 10 ms = one new reading at 100 Hz.
-=======
-    /* 10ms = one new reading at 100hz */
->>>>>>> aubrey
     delay(10);
   }
   gyro = Vec3<float>(sum[0], sum[1], sum[2]) / float(samples);

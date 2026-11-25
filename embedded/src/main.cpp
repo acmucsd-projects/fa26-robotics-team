@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 #include "motor.hpp"
 #include "offset_source.hpp"
 #include <Arduino.h>
@@ -17,7 +16,7 @@ constexpr float TILT_GAIN = 20.0f;
 constexpr uint32_t LOOP_MS = 10;
 constexpr uint32_t OFFSET_TIMEOUT_MS = 500;
 
-float panTarget = STEPS_CENTER;
+float panTargitget = STEPS_CENTER;
 float tiltTarget = STEPS_CENTER;
 uint32_t lastOffsetMs = 0;
 
@@ -30,15 +29,6 @@ bool imuOk = false;
 uint32_t lastImuUs = 0;
 uint32_t imuFails = 0;
 #endif
-=======
-#include "IMU.hpp"
-#include "complimentary_filter.hpp"
-#include <Arduino.h>
-
-/* sda 6, scl 7, replace with the line the calibrate firmware prints */
-Imu imu(6, 7);
-ComplementaryFilter filter;
->>>>>>> aubrey
 
 void setup() {
   Serial.begin(115200);
